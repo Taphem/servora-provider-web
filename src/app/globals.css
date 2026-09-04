@@ -1,0 +1,357 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   SERVORA DESIGN SYSTEM (provider dashboard)
+   Tokens copied verbatim from servora-web's globals.css so the two apps
+   share one palette/type/radius/shadow system — only content differs.
+   ========================================================================== */
+
+:root {
+  /* ---- Ink (neutral) scale — warm-tinted near-black to white ---- */
+  --color-ink-950: #0b0d10;
+  --color-ink-900: #12151a;
+  --color-ink-800: #1c2128;
+  --color-ink-700: #2b323c;
+  --color-ink-600: #454e5a;
+  --color-ink-500: #626b77;
+  --color-ink-400: #88919b;
+  --color-ink-300: #b3bac2;
+  --color-ink-200: #dadee2;
+  --color-ink-100: #eceef0;
+  --color-ink-50: #f5f6f7;
+
+  /* ---- Brand — deep emerald-teal, precise and trustworthy ---- */
+  --color-brand-950: #06261f;
+  --color-brand-900: #0a3a30;
+  --color-brand-800: #0e4f41;
+  --color-brand-700: #126352;
+  --color-brand-600: #157a65;
+  --color-brand-500: #1c9c82;
+  --color-brand-400: #3fb69c;
+  --color-brand-300: #7ecfbb;
+  --color-brand-200: #b8e5d9;
+  --color-brand-100: #ddf3ec;
+  --color-brand-50: #f1faf7;
+
+  /* ---- Accent — warm amber, used sparingly ---- */
+  --color-accent-600: #a9701a;
+  --color-accent-500: #cf8c22;
+  --color-accent-400: #e2a83b;
+  --color-accent-300: #edc27a;
+  --color-accent-100: #fbf0dc;
+
+  /* ---- Signal colors ---- */
+  --color-success-500: #1c9c6b;
+  --color-success-100: #e2f6ec;
+  --color-danger-600: #a8352a;
+  --color-danger-500: #c74133;
+  --color-danger-100: #fbe9e7;
+  --color-warning-500: #cf8c22;
+  --color-warning-100: #fbf0dc;
+
+  /* ---- Informational — calm slate-blue ---- */
+  --color-info-600: #2f4f8f;
+  --color-info-500: #3d63b8;
+  --color-info-100: #e8edfa;
+
+  /* ---- Surfaces ---- */
+  --color-surface: #fdfcfa;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #f5f4f1;
+  --color-surface-inverse: #0f1115;
+  --color-surface-elevated: var(--color-surface-raised);
+
+  /* ---- Text ---- */
+  --color-text-primary: var(--color-ink-900);
+  --color-text-secondary: var(--color-ink-600);
+  --color-text-tertiary: var(--color-ink-400);
+  --color-text-inverse: #f5f6f7;
+  --color-text-brand: var(--color-brand-700);
+  --color-text-muted: var(--color-text-tertiary);
+
+  /* ---- Borders ---- */
+  --color-border-subtle: #eceae4;
+  --color-border-default: #e2e0d8;
+  --color-border-strong: #c9c6bb;
+  --color-border-inverse: rgba(245, 246, 247, 0.14);
+
+  /* ---- Semantic action aliases ---- */
+  --color-primary: var(--color-brand-600);
+  --color-primary-hover: var(--color-brand-700);
+  --color-primary-soft: var(--color-brand-50);
+  --color-error: var(--color-danger-500);
+  --color-error-soft: var(--color-danger-100);
+
+  /* ---- Radius scale ---- */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-full: 999px;
+
+  /* ---- Shadow scale ---- */
+  --shadow-xs: 0 1px 2px rgba(15, 17, 21, 0.04);
+  --shadow-sm: 0 2px 8px rgba(15, 17, 21, 0.05), 0 1px 2px rgba(15, 17, 21, 0.04);
+  --shadow-md: 0 8px 24px rgba(15, 17, 21, 0.07), 0 2px 6px rgba(15, 17, 21, 0.04);
+  --shadow-lg: 0 20px 48px rgba(15, 17, 21, 0.10), 0 4px 12px rgba(15, 17, 21, 0.05);
+  --shadow-glow-brand: 0 0 0 1px rgba(28, 156, 130, 0.16), 0 12px 32px rgba(28, 156, 130, 0.14);
+
+  /* ---- Typography scale ---- */
+  --text-display: clamp(2.75rem, 5.5vw, 4.5rem);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.01em;
+  --text-display--font-weight: 500;
+
+  --text-h1: clamp(2.25rem, 4.5vw, 3.25rem);
+  --text-h1--line-height: 1.1;
+  --text-h1--letter-spacing: -0.01em;
+  --text-h1--font-weight: 500;
+
+  --text-h2: clamp(1.75rem, 3.5vw, 2.75rem);
+  --text-h2--line-height: 1.15;
+  --text-h2--font-weight: 500;
+
+  --text-h3: clamp(1.375rem, 2.2vw, 1.75rem);
+  --text-h3--line-height: 1.25;
+  --text-h3--font-weight: 500;
+
+  --text-h4: 1.25rem;
+  --text-h4--line-height: 1.35;
+  --text-h4--font-weight: 500;
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-body--font-weight: 400;
+
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.5;
+  --text-small--font-weight: 400;
+
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.4;
+  --text-label--letter-spacing: 0.08em;
+  --text-label--font-weight: 600;
+
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 1.4;
+  --text-caption--font-weight: 400;
+
+  /* ---- Spacing ---- */
+  --space-section-y: clamp(4rem, 8vw, 8rem);
+  --space-section-y-sm: clamp(3rem, 6vw, 5.5rem);
+
+  /* ---- Motion tokens ---- */
+  --ease-out-premium: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-premium: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 450ms;
+  --duration-slower: 700ms;
+
+  --duration-hover: var(--duration-fast);
+  --duration-normal: var(--duration-base);
+  --duration-entrance: var(--duration-slow);
+  --duration-exit: var(--duration-fast);
+
+  /* ---- Z-index conventions ---- */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 40;
+  --z-nav: 50;
+  --z-overlay: 90;
+  --z-drawer: 100;
+  --z-modal: 110;
+  --z-toast: 120;
+  --z-tooltip: 130;
+}
+
+@theme inline {
+  --color-ink-950: var(--color-ink-950);
+  --color-ink-900: var(--color-ink-900);
+  --color-ink-800: var(--color-ink-800);
+  --color-ink-700: var(--color-ink-700);
+  --color-ink-600: var(--color-ink-600);
+  --color-ink-500: var(--color-ink-500);
+  --color-ink-400: var(--color-ink-400);
+  --color-ink-300: var(--color-ink-300);
+  --color-ink-200: var(--color-ink-200);
+  --color-ink-100: var(--color-ink-100);
+  --color-ink-50: var(--color-ink-50);
+
+  --color-brand-950: var(--color-brand-950);
+  --color-brand-900: var(--color-brand-900);
+  --color-brand-800: var(--color-brand-800);
+  --color-brand-700: var(--color-brand-700);
+  --color-brand-600: var(--color-brand-600);
+  --color-brand-500: var(--color-brand-500);
+  --color-brand-400: var(--color-brand-400);
+  --color-brand-300: var(--color-brand-300);
+  --color-brand-200: var(--color-brand-200);
+  --color-brand-100: var(--color-brand-100);
+  --color-brand-50: var(--color-brand-50);
+
+  --color-accent-600: var(--color-accent-600);
+  --color-accent-500: var(--color-accent-500);
+  --color-accent-400: var(--color-accent-400);
+  --color-accent-300: var(--color-accent-300);
+  --color-accent-100: var(--color-accent-100);
+
+  --color-success-500: var(--color-success-500);
+  --color-success-100: var(--color-success-100);
+  --color-danger-600: var(--color-danger-600);
+  --color-danger-500: var(--color-danger-500);
+  --color-danger-100: var(--color-danger-100);
+  --color-warning-500: var(--color-warning-500);
+  --color-warning-100: var(--color-warning-100);
+  --color-info-600: var(--color-info-600);
+  --color-info-500: var(--color-info-500);
+  --color-info-100: var(--color-info-100);
+
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-sunken: var(--color-surface-sunken);
+  --color-surface-inverse: var(--color-surface-inverse);
+  --color-surface-elevated: var(--color-surface-elevated);
+
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-text-inverse: var(--color-text-inverse);
+  --color-text-brand: var(--color-text-brand);
+  --color-text-muted: var(--color-text-muted);
+
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-default: var(--color-border-default);
+  --color-border-strong: var(--color-border-strong);
+  --color-border-inverse: var(--color-border-inverse);
+
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-soft: var(--color-primary-soft);
+  --color-error: var(--color-error);
+  --color-error-soft: var(--color-error-soft);
+
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-glow-brand: var(--shadow-glow-brand);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+
+  --text-display: var(--text-display);
+  --text-display--line-height: var(--text-display--line-height);
+  --text-display--letter-spacing: var(--text-display--letter-spacing);
+  --text-display--font-weight: var(--text-display--font-weight);
+
+  --text-h1: var(--text-h1);
+  --text-h1--line-height: var(--text-h1--line-height);
+  --text-h1--letter-spacing: var(--text-h1--letter-spacing);
+  --text-h1--font-weight: var(--text-h1--font-weight);
+
+  --text-h2: var(--text-h2);
+  --text-h2--line-height: var(--text-h2--line-height);
+  --text-h2--font-weight: var(--text-h2--font-weight);
+
+  --text-h3: var(--text-h3);
+  --text-h3--line-height: var(--text-h3--line-height);
+  --text-h3--font-weight: var(--text-h3--font-weight);
+
+  --text-h4: var(--text-h4);
+  --text-h4--line-height: var(--text-h4--line-height);
+  --text-h4--font-weight: var(--text-h4--font-weight);
+
+  --text-body: var(--text-body);
+  --text-body--line-height: var(--text-body--line-height);
+  --text-body--font-weight: var(--text-body--font-weight);
+
+  --text-small: var(--text-small);
+  --text-small--line-height: var(--text-small--line-height);
+  --text-small--font-weight: var(--text-small--font-weight);
+
+  --text-label: var(--text-label);
+  --text-label--line-height: var(--text-label--line-height);
+  --text-label--letter-spacing: var(--text-label--letter-spacing);
+  --text-label--font-weight: var(--text-label--font-weight);
+
+  --text-caption: var(--text-caption);
+  --text-caption--line-height: var(--text-caption--line-height);
+  --text-caption--font-weight: var(--text-caption--font-weight);
+}
+
+@media (prefers-color-scheme: dark) {
+  /* Provider web intentionally ships light-mode-only for now, matching
+     servora-web's current stance; dark tokens are a future theming pass. */
+}
+
+/*
+ * Base resets live in Tailwind's `base` layer (not unlayered) so utility
+ * classes — generated into the `utilities` layer — can still override them.
+ */
+@layer base {
+  * {
+    border-color: var(--color-border-default);
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  body {
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--color-brand-200);
+    color: var(--color-brand-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *:not([data-motion-exempt]),
+  *:not([data-motion-exempt])::before,
+  *:not([data-motion-exempt])::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.container-servora {
+  width: 100%;
+  max-width: 1360px;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .container-servora {
+    padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-servora {
+    padding-inline: 2.5rem;
+  }
+}
