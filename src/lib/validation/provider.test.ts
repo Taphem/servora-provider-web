@@ -18,9 +18,10 @@ describe("createProviderSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects a slug with uppercase or invalid characters", () => {
+  it("does not accept a caller-controlled slug", () => {
     const result = createProviderSchema.safeParse({ displayName: "Jordan Lee", slug: "Not Valid!" });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).not.toHaveProperty("slug");
   });
 
   it("rejects an invalid IANA time zone", () => {

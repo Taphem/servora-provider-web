@@ -29,15 +29,6 @@ export const createProviderSchema = z.object({
     .trim()
     .min(2, "Enter at least 2 characters")
     .max(150, "Keep it under 150 characters"),
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(2)
-    .max(150)
-    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lowercase letters, numbers and hyphens only")
-    .optional()
-    .or(z.literal("")),
   bio: z.string().trim().min(1).max(2000, "Keep your bio under 2000 characters").optional().or(z.literal("")),
   profilePhotoUrl: z.string().trim().url("Enter a valid URL").max(2048).optional().or(z.literal("")),
   yearsExperience: z.coerce
@@ -58,7 +49,6 @@ export const createProviderSchema = z.object({
 export type CreateProviderFormValues = z.infer<typeof createProviderSchema>;
 
 export const updateProviderSchema = createProviderSchema.partial().extend({
-  slug: createProviderSchema.shape.slug,
 });
 
 export const createProviderServiceSchema = z

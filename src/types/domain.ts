@@ -47,13 +47,23 @@ export interface Provider {
 
 export interface CreateProviderInput {
   displayName: string;
-  slug?: string;
   bio?: string;
   profilePhotoUrl?: string;
   yearsExperience?: number;
   businessName?: string;
   languages?: string[];
   timezone?: string;
+}
+
+export interface ProfilePhotoUploadSignature {
+  uploadUrl: string;
+  apiKey: string;
+  timestamp: number;
+  signature: string;
+  publicId: string;
+  uploadPreset: string;
+  allowedFormats: string[];
+  maxBytes: number;
 }
 
 export type UpdateProviderInput = Partial<CreateProviderInput>;

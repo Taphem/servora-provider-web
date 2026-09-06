@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api/client";
+import { ApiError, apiRequest } from "@/lib/api/client";
 import type {
   AvailabilityDateOverride,
   AvailabilityDateOverrideInput,
@@ -6,6 +6,7 @@ import type {
   CreateProviderServiceInput,
   CreateServiceAreaInput,
   Page,
+  ProfilePhotoUploadSignature,
   Provider,
   ProviderService,
   ServiceArea,
@@ -38,6 +39,44 @@ export function createMyProvider(input: CreateProviderInput): Promise<Provider> 
 
 export function updateMyProvider(input: UpdateProviderInput): Promise<Provider> {
   return apiRequest<Provider>("/api/v1/providers/me", { method: "PATCH", body: input });
+}
+
+const PROFILE_PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+export const MAX_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024;
+
+export function validateProfilePhoto(file: File): string | null {
+  if (!PROFILE_PHOTO_TYPES.has(file.type)) return 'Choose a JPG, JPEG, PNG, or WebP image.';
+  if (file.size > MAX_PROFILE_PHOTO_BYTES) return 'Choose an image smaller than 5 MB.';
+  return null;
+}
+
+/** Direct upload using a short-lived signature. Cloudinary's API secret never enters the browser. */
+export async function uploadMyProfilePhoto(file: File): Promise<string> {
+  const validationError = validateProfilePhoto(file);
+  if (validationError) throw new ApiError('CLIENT_INVALID_PROFILE_PHOTO', validationError, 400);
+
+  const signed = await apiRequest<ProfilePhotoUploadSignature>('/api/v1/providers/me/profile-photo-upload', { method: 'POST' });
+  const form = new FormData();
+  form.set('file', file);
+  form.set('api_key', signed.apiKey);
+  form.set('timestamp', String(signed.timestamp));
+  form.set('signature', signed.signature);
+  form.set('public_id', signed.publicId);
+  form.set('upload_preset', signed.uploadPreset);
+  form.set('allowed_formats', signed.allowedFormats.join(','));
+  form.set('max_file_size', String(signed.maxBytes));
+
+  let response: Response;
+  try {
+    response = await fetch(signed.uploadUrl, { method: 'POST', body: form });
+  } catch {
+    throw new ApiError('CLIENT_PROFILE_PHOTO_UPLOAD_FAILED', "Couldn't upload your profile photo. Please try again.", 0);
+  }
+  const payload = (await response.json().catch(() => null)) as { secure_url?: unknown; public_id?: unknown } | null;
+  if (!response.ok || typeof payload?.secure_url !== 'string' || payload.public_id !== signed.publicId) {
+    throw new ApiError('CLIENT_PROFILE_PHOTO_UPLOAD_FAILED', "Couldn't upload your profile photo. Please try again.", response.status);
+  }
+  return payload.secure_url;
 }
 
 /** PENDING_ONBOARDING or PAUSED -> ACTIVE. */
