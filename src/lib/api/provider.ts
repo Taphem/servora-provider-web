@@ -72,9 +72,22 @@ export async function uploadMyProfilePhoto(file: File): Promise<string> {
   } catch {
     throw new ApiError('CLIENT_PROFILE_PHOTO_UPLOAD_FAILED', "Couldn't upload your profile photo. Please try again.", 0);
   }
-  const payload = (await response.json().catch(() => null)) as { secure_url?: unknown; public_id?: unknown } | null;
+  const payload = (await response.json().catch(() => null)) as
+    | { secure_url?: unknown; public_id?: unknown; error?: { message?: unknown } }
+    | null;
   if (!response.ok || typeof payload?.secure_url !== 'string' || payload.public_id !== signed.publicId) {
-    throw new ApiError('CLIENT_PROFILE_PHOTO_UPLOAD_FAILED', "Couldn't upload your profile photo. Please try again.", response.status);
+    // Cloudinary's own error envelope is { error: { message } } — e.g. "Invalid
+    // cloud_name", "Upload preset not found", "Invalid Signature". Surfacing it
+    // (rather than a generic message) is what tells you whether the
+    // CLOUDINARY_* Render env vars are wrong, and exactly which one.
+    const cloudinaryMessage = typeof payload?.error?.message === 'string' ? payload.error.message : undefined;
+    throw new ApiError(
+      'CLIENT_PROFILE_PHOTO_UPLOAD_FAILED',
+      cloudinaryMessage
+        ? `Couldn't upload your profile photo: ${cloudinaryMessage}`
+        : "Couldn't upload your profile photo. Please try again.",
+      response.status,
+    );
   }
   return payload.secure_url;
 }

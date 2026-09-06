@@ -134,7 +134,8 @@ describe("OnboardingWizard — new provider", () => {
     // Forward again into step 2, select a service, and continue.
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("What do you do?");
-    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => expect(m.replaceMySkills).toHaveBeenCalledWith([]));
@@ -152,7 +153,7 @@ describe("OnboardingWizard — new provider", () => {
     await screen.findByText("What do you do?");
 
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(await screen.findByText("Select at least one service you're qualified to provide.")).toBeInTheDocument();
+    expect(await screen.findByText("Search for and select at least one service you're qualified to provide.")).toBeInTheDocument();
     expect(m.createMyService).not.toHaveBeenCalled();
   });
 
@@ -168,7 +169,8 @@ describe("OnboardingWizard — new provider", () => {
     await user.type(await screen.findByLabelText("Display name"), "Asha Cleaner");
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("What do you do?");
-    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("Where and when can customers book you?");
 
@@ -199,7 +201,8 @@ describe("OnboardingWizard — new provider", () => {
     await user.type(await screen.findByLabelText("Display name"), "Asha Cleaner");
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("What do you do?");
-    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("Where and when can customers book you?");
 
