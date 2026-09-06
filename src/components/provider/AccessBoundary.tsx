@@ -1,8 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { LogIn, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { becomeProvider } from "@/lib/auth/api";
+import { ApiError } from "@/lib/api/client";
 import { isProviderRole } from "@/types/domain";
 import { env } from "@/lib/env";
 import { Button } from "@/components/ui/Button";
@@ -17,13 +19,27 @@ interface AccessBoundaryProps {
  * Every /provider/* page needs the same three checks before it can show
  * anything real: is the visitor signed in, and does their account carry
  * the BUSINESS_OWNER role servora-provider requires for self-service?
- * There is currently no way for a CUSTOMER to self-upgrade to
- * BUSINESS_OWNER anywhere in servora-auth (verified against that
- * service's source — no such endpoint exists), so that case is shown
- * honestly rather than papered over with a fake "become a provider" button.
+ * A verified CUSTOMER can transition their own account through Auth's
+ * session-bound endpoint, then refresh this context without changing the
+ * opaque-cookie authentication model.
  */
 export function AccessBoundary({ children }: AccessBoundaryProps) {
-  const { user, status } = useAuth();
+  const { user, status, refresh } = useAuth();
+  const [transitionPending, setTransitionPending] = useState(false);
+  const [transitionError, setTransitionError] = useState<string | null>(null);
+
+  async function handleBecomeProvider() {
+    setTransitionError(null);
+    setTransitionPending(true);
+    try {
+      await becomeProvider();
+      await refresh();
+    } catch (err) {
+      setTransitionError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setTransitionPending(false);
+    }
+  }
 
   if (status === "loading") {
     return (
@@ -60,6 +76,8 @@ export function AccessBoundary({ children }: AccessBoundaryProps) {
   }
 
   if (!isProviderRole(user.role)) {
+    const canBecomeProvider = user.role === "CUSTOMER" && user.emailVerified;
+
     return (
       <div className="mx-auto max-w-lg py-16">
         <Card className="flex flex-col items-center gap-4 p-10 text-center">
@@ -67,15 +85,28 @@ export function AccessBoundary({ children }: AccessBoundaryProps) {
             <ShieldAlert size={22} aria-hidden />
           </span>
           <div>
-            <h1 className="font-display text-h4 text-ink-900">Provider access isn&apos;t self-serve yet</h1>
+            <h1 className="font-display text-h4 text-ink-900">
+              {canBecomeProvider ? "Become a provider" : "Provider access unavailable"}
+            </h1>
             <p className="mt-2 text-sm leading-relaxed text-text-secondary">
               Your account (<strong>{user.email}</strong>) is signed in as{" "}
-              <strong>{formatRole(user.role)}</strong>. Servora&apos;s provider dashboard requires a
-              provider (business owner) account, and there is currently no self-service way to switch
-              an existing account into that role — this needs a future update to Servora&apos;s
-              authentication service, which this dashboard doesn&apos;t modify.
+              <strong>{formatRole(user.role)}</strong>. {canBecomeProvider
+                ? "Create your provider account to set up your business profile, services, and availability."
+                : user.role === "CUSTOMER"
+                  ? "Verify your email on the main Servora site before becoming a provider."
+                  : "Servora's provider dashboard is available to business owner accounts."}
             </p>
           </div>
+          {canBecomeProvider ? (
+            <Button variant="primary" loading={transitionPending} onClick={() => void handleBecomeProvider()}>
+              Become a provider
+            </Button>
+          ) : null}
+          {transitionError ? (
+            <p role="alert" className="text-sm text-error">
+              {transitionError}
+            </p>
+          ) : null}
         </Card>
       </div>
     );
