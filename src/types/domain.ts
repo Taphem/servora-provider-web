@@ -211,3 +211,33 @@ export interface Category {
   createdAt: string;
   updatedAt: string;
 }
+
+/** The type of a customer-facing booking-request field (servora-services' RequirementFieldType). */
+export type RequirementFieldType = "TEXT" | "TEXTAREA" | "SELECT" | "MULTISELECT" | "NUMBER" | "BOOLEAN" | "DATE" | "TIME";
+
+export interface RequirementFieldOption {
+  id: string;
+  value: string;
+  label: string;
+  displayOrder: number;
+}
+
+/** A field a customer fills in when requesting a given catalog service — see servora-services' service_requirement_fields. Read-only from Provider Web's perspective. */
+export interface RequirementField {
+  id: string;
+  serviceId: string;
+  key: string;
+  label: string;
+  fieldType: RequirementFieldType;
+  isRequired: boolean;
+  displayOrder: number;
+  placeholder: string | null;
+  helpText: string | null;
+  minLength: number | null;
+  maxLength: number | null;
+  minValue: string | null;
+  maxValue: string | null;
+  minSelections: number | null;
+  maxSelections: number | null;
+  options: RequirementFieldOption[];
+}

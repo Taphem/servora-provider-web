@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { KNOWN_LANGUAGE_CODES } from "@/lib/languages";
 
 /**
  * Client-side mirrors of servora-provider's actual zod schemas
@@ -12,7 +13,12 @@ const languageCode = z
   .string()
   .trim()
   .toLowerCase()
-  .regex(/^[a-z]{2}$/, "Use a 2-letter language code, e.g. en");
+  .regex(/^[a-z]{2}$/, "Use a 2-letter language code, e.g. en")
+  // Defense in depth: the UI only ever offers LANGUAGE_OPTIONS as a
+  // controlled multi-select, so this should never actually fail — but a
+  // schema that only checked shape (2 lowercase letters) wouldn't catch a
+  // future regression that let an arbitrary code slip through.
+  .refine((code) => KNOWN_LANGUAGE_CODES.has(code), "Choose a language from the list");
 
 function isValidTimeZone(tz: string): boolean {
   try {
