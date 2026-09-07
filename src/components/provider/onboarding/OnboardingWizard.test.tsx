@@ -125,7 +125,7 @@ describe("OnboardingWizard — new provider", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => expect(m.createMyProvider).toHaveBeenCalledWith(expect.objectContaining({ displayName: "Asha Cleaner" })));
-    expect(await screen.findByText("What do you do?")).toBeInTheDocument();
+    expect(await screen.findByText("Build your professional offering")).toBeInTheDocument();
 
     // Going back retains what was typed in step 1.
     await user.click(screen.getByRole("button", { name: "Back" }));
@@ -133,7 +133,7 @@ describe("OnboardingWizard — new provider", () => {
 
     // Forward again into step 2, select a service, and continue.
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    await screen.findByText("What do you do?");
+    await screen.findByText("Build your professional offering");
     await user.click(screen.getByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
@@ -150,7 +150,7 @@ describe("OnboardingWizard — new provider", () => {
     render(<OnboardingWizard />);
     await user.type(await screen.findByLabelText("Display name"), "Asha Cleaner");
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    await screen.findByText("What do you do?");
+    await screen.findByText("Build your professional offering");
 
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByText("Search for and select at least one service you're qualified to provide.")).toBeInTheDocument();
@@ -168,7 +168,7 @@ describe("OnboardingWizard — new provider", () => {
     render(<OnboardingWizard />);
     await user.type(await screen.findByLabelText("Display name"), "Asha Cleaner");
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    await screen.findByText("What do you do?");
+    await screen.findByText("Build your professional offering");
     await user.click(screen.getByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
@@ -200,7 +200,7 @@ describe("OnboardingWizard — new provider", () => {
     render(<OnboardingWizard />);
     await user.type(await screen.findByLabelText("Display name"), "Asha Cleaner");
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    await screen.findByText("What do you do?");
+    await screen.findByText("Build your professional offering");
     await user.click(screen.getByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
@@ -243,7 +243,7 @@ describe("OnboardingWizard — resuming an existing provider", () => {
     m.listMyWeeklyAvailability.mockResolvedValue({ data: [] });
 
     render(<OnboardingWizard />);
-    expect(await screen.findByText("What do you do?")).toBeInTheDocument();
+    expect(await screen.findByText("Build your professional offering")).toBeInTheDocument();
   });
 
   it("resumes at step 3 when services exist but no service area does", async () => {

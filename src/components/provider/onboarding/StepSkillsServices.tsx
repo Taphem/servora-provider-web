@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Pencil, Search, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Search, Sparkles, Trash2, Wrench } from "lucide-react";
 import type { ZodIssue } from "zod";
 import { listCatalogServices, listCategories } from "@/lib/api/services";
 import { createProviderServiceSchema } from "@/lib/validation/provider";
@@ -16,7 +16,6 @@ import { Select } from "@/components/ui/Select";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 
 type LoadStatus = "loading" | "ready" | "error";
@@ -28,6 +27,29 @@ interface StepSkillsServicesProps {
   onBack: () => void;
 }
 
+function PanelHeading({
+  icon,
+  eyebrow,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="mb-6">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-50 text-brand-700">{icon}</span>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">{eyebrow}</p>
+      </div>
+      <h2 className="font-display text-h3 text-ink-900">{title}</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{description}</p>
+    </div>
+  );
+}
+
 export function StepSkillsServices({ value, onChange, onContinue, onBack }: StepSkillsServicesProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<CatalogService[]>([]);
@@ -35,7 +57,6 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
 
   const load = useCallback(async () => {
     setStatus("loading");
@@ -59,6 +80,8 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
   const categoryName = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
   const serviceById = useMemo(() => new Map(services.map((s) => [s.id, s])), [services]);
   const draftByServiceId = useMemo(() => new Map(value.services.map((d) => [d.serviceId, d])), [value.services]);
+  const selectedServiceIds = useMemo(() => new Set(value.services.map((d) => d.serviceId)), [value.services]);
+  const popularServices = useMemo(() => services.filter((s) => !selectedServiceIds.has(s.id)).slice(0, 6), [services, selectedServiceIds]);
 
   function toggleService(serviceId: string) {
     const existing = draftByServiceId.get(serviceId);
@@ -119,18 +142,19 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div>
-        <h1 className="font-display text-h2 text-ink-900">What do you do?</h1>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Step 2 of 3</p>
+        <h1 className="font-display text-h2 text-ink-900">Build your professional offering</h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-secondary">
-          Choose the services you offer, then tell customers what you&apos;re especially good at.
+          Tell customers what they can book from you, and what you&apos;re especially good at.
         </p>
       </div>
 
       {status === "loading" ? (
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-11 w-full max-w-sm" />
-          <Skeleton className="h-24 w-full" />
+        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+          <Skeleton className="h-72 w-full rounded-xl" />
+          <Skeleton className="h-72 w-full rounded-xl" />
         </div>
       ) : status === "error" ? (
         <ErrorState
@@ -142,145 +166,81 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
           }
         />
       ) : (
-        <>
-          <div>
-            <p className="mb-2 text-sm font-medium text-ink-700">Search for a service you provide</p>
+        <div className="grid gap-6 lg:grid-cols-[1fr_340px] lg:items-start">
+          <Card className="p-6 sm:p-7">
+            <PanelHeading
+              icon={<Wrench size={14} aria-hidden />}
+              eyebrow="Services"
+              title="What services do you offer?"
+              description="Add the services customers can book from you."
+            />
+
             <ServiceSearch
               services={services}
               categoryName={categoryName}
-              selectedServiceIds={new Set(value.services.map((d) => d.serviceId))}
+              selectedServiceIds={selectedServiceIds}
               onToggle={toggleService}
-              onOpenChange={setSearchOpen}
             />
 
-            {value.services.length === 0 && !searchOpen ? (
-              <EmptyState
-                className="mt-4"
-                icon={<Search size={20} aria-hidden />}
-                title="No services added yet"
-                description="Start by searching for a service you provide."
-                action={
-                  services.length > 0 ? (
-                    <div className="mt-1 flex flex-wrap justify-center gap-2">
-                      {services.slice(0, 6).map((service) => (
+            {value.services.length === 0 ? (
+              <div className="mt-5 rounded-xl bg-surface-sunken p-5">
+                <p className="font-medium text-ink-900">No services added yet</p>
+                <p className="mt-1 text-sm leading-relaxed text-text-secondary">
+                  Add the services you provide so customers know what they can book.
+                </p>
+                {popularServices.length > 0 ? (
+                  <div className="mt-4">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Popular services</p>
+                    <div className="flex flex-wrap gap-2">
+                      {popularServices.map((service) => (
                         <button
                           key={service.id}
                           type="button"
                           onClick={() => toggleService(service.id)}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-raised px-3 py-1.5 text-sm text-ink-700 hover:border-border-strong"
+                          className="rounded-full border border-border-default bg-surface-raised px-3.5 py-1.5 text-sm text-ink-700 shadow-xs transition-colors hover:border-brand-300 hover:text-brand-700"
                         >
-                          <Sparkles size={13} className="text-brand-500" aria-hidden />
                           {service.name}
                         </button>
                       ))}
                     </div>
-                  ) : undefined
-                }
-              />
-            ) : null}
-
-            {value.services.length > 0 ? (
-              <ul className="mt-4 flex flex-wrap gap-2" aria-label="Selected services">
-                {value.services.map((draft) => {
-                  const service = serviceById.get(draft.serviceId);
-                  return (
-                    <li key={draft.serviceId}>
-                      <button
-                        type="button"
-                        onClick={() => setActiveServiceId(draft.serviceId)}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full border py-1 pl-3 pr-1.5 text-sm transition-colors",
-                          activeServiceId === draft.serviceId
-                            ? "border-brand-500 bg-brand-50 text-brand-700"
-                            : "border-border-default bg-surface-raised text-ink-700 hover:border-border-strong",
-                        )}
-                      >
-                        {service?.name ?? "Service"}
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            removeService(draft.serviceId);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.stopPropagation();
-                              event.preventDefault();
-                              removeService(draft.serviceId);
-                            }
-                          }}
-                          aria-label={`Remove ${service?.name ?? "service"}`}
-                          className="flex h-4 w-4 items-center justify-center rounded-full hover:bg-brand-100"
-                        >
-                          <X size={12} aria-hidden />
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : null}
-          </div>
-
-          {activeServiceId && draftByServiceId.get(activeServiceId) ? (
-            <ServiceConfigPanel
-              service={serviceById.get(activeServiceId)}
-              categoryLabel={
-                serviceById.get(activeServiceId)
-                  ? (categoryName.get(serviceById.get(activeServiceId)!.categoryId) ?? "")
-                  : ""
-              }
-              draft={draftByServiceId.get(activeServiceId)!}
-              onChange={(patch) => updateServiceDraft(activeServiceId, patch)}
-              onDone={() => setActiveServiceId(null)}
-              onRemove={() => removeService(activeServiceId)}
-            />
-          ) : null}
-
-          {value.services.filter((d) => d.serviceId !== activeServiceId).length > 0 ? (
-            <div>
-              <p className="mb-2 text-sm font-medium text-ink-700">Your services</p>
-              <div className="flex flex-col gap-2">
-                {value.services
-                  .filter((d) => d.serviceId !== activeServiceId)
-                  .map((draft) => {
-                    const service = serviceById.get(draft.serviceId);
-                    return (
-                      <Card key={draft.serviceId} className="flex items-center justify-between gap-3 p-4">
-                        <div>
-                          <p className="font-medium text-ink-900">{service?.name ?? "Service"}</p>
-                          <p className="text-xs text-text-muted">
-                            {service ? categoryName.get(service.categoryId) : ""}
-                            {draft.experienceYears ? ` · ${draft.experienceYears} yrs experience` : ""}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {draft.priceAmount && draft.priceCurrency ? (
-                            <span className="text-sm font-medium text-ink-900">
-                              {draft.priceCurrency} {draft.priceAmount}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-text-muted">No price set</span>
-                          )}
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={<Pencil size={13} aria-hidden />}
-                            onClick={() => setActiveServiceId(draft.serviceId)}
-                          >
-                            Edit
-                          </Button>
-                        </div>
-                      </Card>
-                    );
-                  })}
+                  </div>
+                ) : null}
               </div>
-            </div>
-          ) : null}
+            ) : (
+              <div className="mt-5 flex flex-col gap-3">
+                {value.services.map((draft) => (
+                  <ServiceOfferingCard
+                    key={draft.serviceId}
+                    service={serviceById.get(draft.serviceId)}
+                    categoryLabel={
+                      serviceById.get(draft.serviceId)
+                        ? (categoryName.get(serviceById.get(draft.serviceId)!.categoryId) ?? "")
+                        : ""
+                    }
+                    draft={draft}
+                    expanded={activeServiceId === draft.serviceId}
+                    onToggleExpanded={() =>
+                      setActiveServiceId((current) => (current === draft.serviceId ? null : draft.serviceId))
+                    }
+                    onChange={(patch) => updateServiceDraft(draft.serviceId, patch)}
+                    onSaved={() => setActiveServiceId(null)}
+                    onRemove={() => removeService(draft.serviceId)}
+                  />
+                ))}
+              </div>
+            )}
+          </Card>
 
-          <SkillsExpertise value={value.skills} onChange={(skills) => onChange({ ...value, skills })} />
-        </>
+          <Card className="p-6 sm:p-7">
+            <PanelHeading
+              icon={<Sparkles size={14} aria-hidden />}
+              eyebrow="Expertise"
+              title="Skills & expertise"
+              description="What are you especially good at? This helps customers understand your strengths beyond the services you offer."
+            />
+            <SkillsExpertise value={value.skills} onChange={(skills) => onChange({ ...value, skills })} />
+          </Card>
+        </div>
       )}
 
       {formError ? (
@@ -306,26 +266,15 @@ function ServiceSearch({
   categoryName,
   selectedServiceIds,
   onToggle,
-  onOpenChange,
 }: {
   services: CatalogService[];
   categoryName: Map<string, string>;
   selectedServiceIds: Set<string>;
   onToggle: (serviceId: string) => void;
-  onOpenChange?: (open: boolean) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
-  const [open, setOpenState] = useState(false);
-
-  const setOpen = useCallback(
-    (next: boolean) => {
-      setOpenState(next);
-      onOpenChange?.(next);
-    },
-    [onOpenChange],
-  );
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -334,7 +283,7 @@ function ServiceSearch({
     }
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open, setOpen]);
+  }, [open]);
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -350,29 +299,30 @@ function ServiceSearch({
   }, [services, categoryName, query]);
 
   return (
-    <div ref={rootRef} className="relative w-full max-w-sm">
+    <div ref={rootRef} className="relative w-full">
       <div className="relative">
-        <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-tertiary" aria-hidden />
+        <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary" aria-hidden />
         <input
-          ref={inputRef}
           role="combobox"
           aria-label="Search services"
           aria-expanded={open}
           aria-controls="service-search-listbox"
           aria-autocomplete="list"
           value={query}
-          placeholder="Search services…"
+          placeholder="Search and add a service…"
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => setOpen(true)}
+          onClick={() => setOpen(true)}
           onKeyDown={(event) => {
             if (event.key === "Escape") setOpen(false);
           }}
           className={cn(
-            "h-11 w-full border bg-surface-raised pl-10 pr-4 text-sm text-ink-900 placeholder:text-text-tertiary transition-colors duration-[var(--duration-fast)]",
-            open ? "rounded-t-md border-b-transparent" : "rounded-md",
+            "h-12 w-full border bg-surface-raised pl-11 pr-11 text-sm text-ink-900 placeholder:text-text-tertiary transition-colors duration-[var(--duration-fast)]",
+            open ? "rounded-t-lg border-b-transparent" : "rounded-lg",
             "border-border-default hover:border-border-strong focus:border-primary",
           )}
         />
+        <ArrowRight size={15} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary" aria-hidden />
       </div>
 
       {open ? (
@@ -381,14 +331,14 @@ function ServiceSearch({
           role="listbox"
           aria-label="Services"
           aria-multiselectable="true"
-          className="absolute z-(--z-overlay) max-h-72 w-full overflow-y-auto rounded-b-md border border-t border-border-default bg-surface-raised py-1 shadow-lg"
+          className="absolute z-(--z-overlay) max-h-80 w-full overflow-y-auto rounded-b-lg border border-t border-border-default bg-surface-raised py-1 shadow-lg"
         >
           {groups.length === 0 ? (
             <p className="px-4 py-3 text-sm text-text-muted">No services found.</p>
           ) : (
-            groups.map((group) => (
-              <div key={group.name}>
-                <p className="px-4 pb-1 pt-2.5 text-xs font-semibold uppercase tracking-wide text-text-muted">{group.name}</p>
+            groups.map((group, index) => (
+              <div key={group.name} className={cn(index > 0 && "border-t border-border-subtle")}>
+                <p className="px-4 pb-1.5 pt-3 text-xs font-semibold uppercase tracking-wide text-text-muted">{group.name}</p>
                 {group.services.map((service) => {
                   const selected = selectedServiceIds.has(service.id);
                   return (
@@ -399,9 +349,10 @@ function ServiceSearch({
                       onMouseDown={(event) => {
                         event.preventDefault();
                         onToggle(service.id);
+                        setOpen(false);
                       }}
                       className={cn(
-                        "flex cursor-pointer items-center gap-2 px-4 py-2 text-sm text-ink-900 hover:bg-ink-50",
+                        "flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm text-ink-900 hover:bg-ink-50",
                         selected && "font-medium text-brand-700",
                       )}
                     >
@@ -419,22 +370,27 @@ function ServiceSearch({
   );
 }
 
-function ServiceConfigPanel({
+function ServiceOfferingCard({
   service,
   categoryLabel,
   draft,
+  expanded,
+  onToggleExpanded,
   onChange,
-  onDone,
+  onSaved,
   onRemove,
 }: {
   service: CatalogService | undefined;
   categoryLabel: string;
   draft: ServiceDraft;
+  expanded: boolean;
+  onToggleExpanded: () => void;
   onChange: (patch: Partial<ServiceDraft>) => void;
-  onDone: () => void;
+  onSaved: () => void;
   onRemove: () => void;
 }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const hasPrice = Boolean(draft.priceAmount && draft.priceCurrency);
 
   function handleSave() {
     const raw = {
@@ -455,77 +411,113 @@ function ServiceConfigPanel({
       return;
     }
     setErrors({});
-    onDone();
+    onSaved();
   }
 
   return (
-    <Card className="flex flex-col gap-4 border-brand-200 p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="font-medium text-ink-900">{service?.name ?? "Service"}</p>
-          {categoryLabel ? <p className="text-xs text-text-muted">{categoryLabel}</p> : null}
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          icon={<Trash2 size={14} aria-hidden />}
-          onClick={onRemove}
-          aria-label="Remove this service"
-        >
-          <span className="sr-only sm:not-sr-only">Remove</span>
-        </Button>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink-700">Your price</span>
-          <div className="flex gap-2">
-            <Select
-              aria-label="Currency"
-              className="w-36 shrink-0"
-              value={draft.priceCurrency}
-              onChange={(e) => onChange({ priceCurrency: e.target.value })}
-              options={CURRENCY_OPTIONS.map((c) => ({ value: c.code, label: c.label }))}
-            />
-            <Input
-              aria-label="Price amount"
-              type="number"
-              min={0}
-              step="0.01"
-              value={draft.priceAmount}
-              onChange={(e) => onChange({ priceAmount: e.target.value })}
-              errorText={errors.priceAmount}
-              placeholder="Optional"
-            />
+    <div
+      className={cn(
+        "overflow-hidden rounded-xl border bg-surface-raised transition-colors",
+        expanded ? "border-brand-300 shadow-sm" : "border-border-default",
+      )}
+    >
+      <div className="flex items-start justify-between gap-4 p-5">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700">
+            <Sparkles size={14} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-display text-base text-ink-900">{service?.name ?? "Service"}</p>
+            {categoryLabel ? <p className="mt-0.5 text-xs text-text-muted">{categoryLabel}</p> : null}
           </div>
         </div>
-        <Input
-          label="Experience (years)"
-          type="number"
-          min={0}
-          max={100}
-          value={draft.experienceYears}
-          onChange={(e) => onChange({ experienceYears: e.target.value })}
-          errorText={errors.experienceYears}
-          placeholder="Optional"
-        />
-        <Input
-          label="Additional notes"
-          value={draft.notes}
-          onChange={(e) => onChange({ notes: e.target.value })}
-          errorText={errors.notes}
-          placeholder="Tell customers about your expertise…"
-        />
+        <div className="flex shrink-0 items-center gap-1">
+          {!expanded ? (
+            <div className="mr-1 text-right">
+              <p className="text-[0.65rem] uppercase tracking-wide text-text-muted">Starting price</p>
+              <p className={cn("text-sm font-semibold", hasPrice ? "text-ink-900" : "text-text-muted")}>
+                {hasPrice ? `${draft.priceCurrency} ${draft.priceAmount}` : "Not set"}
+              </p>
+            </div>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            icon={<Trash2 size={14} aria-hidden />}
+            onClick={onRemove}
+            aria-label="Remove service"
+          >
+            <span className="sr-only">Remove</span>
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            icon={<ChevronDown size={14} className={cn("transition-transform", expanded && "rotate-180")} aria-hidden />}
+            iconPosition="right"
+            onClick={onToggleExpanded}
+          >
+            {expanded ? "Close" : "Edit"}
+          </Button>
+        </div>
       </div>
 
-      {service ? <RequirementsPreview serviceIdOrSlug={service.slug} /> : null}
+      {expanded ? (
+        <div className="flex flex-col gap-4 border-t border-border-subtle bg-surface-sunken/50 p-5">
+          <div>
+            <span className="text-sm font-medium text-ink-700">Your starting price</span>
+            <div className="mt-1.5 flex gap-2">
+              <Select
+                aria-label="Currency"
+                className="w-40 shrink-0"
+                value={draft.priceCurrency}
+                onChange={(e) => onChange({ priceCurrency: e.target.value })}
+                options={CURRENCY_OPTIONS.map((c) => ({ value: c.code, label: c.label }))}
+              />
+              <Input
+                aria-label="Price amount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={draft.priceAmount}
+                onChange={(e) => onChange({ priceAmount: e.target.value })}
+                errorText={errors.priceAmount}
+                placeholder="Optional"
+                className="flex-1"
+              />
+            </div>
+          </div>
 
-      <div>
-        <Button type="button" size="sm" onClick={handleSave}>
-          Save service
-        </Button>
-      </div>
-    </Card>
+          <Input
+            label="Experience"
+            type="number"
+            min={0}
+            max={100}
+            value={draft.experienceYears}
+            onChange={(e) => onChange({ experienceYears: e.target.value })}
+            errorText={errors.experienceYears}
+            placeholder="Years of experience with this service"
+            className="sm:max-w-xs"
+          />
+
+          <Input
+            label="Notes"
+            value={draft.notes}
+            onChange={(e) => onChange({ notes: e.target.value })}
+            errorText={errors.notes}
+            placeholder="Tell customers about your expertise…"
+          />
+
+          {service ? <RequirementsPreview serviceIdOrSlug={service.slug} /> : null}
+
+          <div>
+            <Button type="button" size="sm" onClick={handleSave}>
+              Save service
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }

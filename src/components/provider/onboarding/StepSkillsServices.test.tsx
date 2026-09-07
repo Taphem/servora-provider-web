@@ -81,24 +81,26 @@ function Controlled({ initial = emptySkillsServices() }: { initial?: SkillsServi
   return <StepSkillsServices value={value} onChange={setValue} onContinue={vi.fn()} onBack={vi.fn()} />;
 }
 
-describe("StepSkillsServices — search-first service selection", () => {
-  it("shows an intentional empty state with suggested services before the dropdown is opened, then groups matches under real category headers once opened", async () => {
+describe("StepSkillsServices — services section", () => {
+  it("shows a compact empty state (no giant box) before any service is added", async () => {
+    setup();
+    render(<Controlled />);
+
+    await screen.findByRole("combobox", { name: "Search services" });
+    expect(screen.getByText("No services added yet")).toBeInTheDocument();
+    expect(screen.getByText("Add the services you provide so customers know what they can book.")).toBeInTheDocument();
+  });
+
+  it("groups search results under real category headers", async () => {
     setup();
     const user = userEvent.setup();
     render(<Controlled />);
 
-    const search = await screen.findByRole("combobox", { name: "Search services" });
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    expect(screen.getByText("No services added yet")).toBeInTheDocument();
-    expect(screen.getByText("Start by searching for a service you provide.")).toBeInTheDocument();
-
-    await user.click(search);
+    await user.click(await screen.findByRole("combobox", { name: "Search services" }));
     expect(screen.getByText("Cleaning")).toBeInTheDocument();
     expect(screen.getByText("Auto")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Home Deep Cleaning" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Car Wash & Detailing" })).toBeInTheDocument();
-    // The empty state (and its duplicate suggestion chips) steps aside while results are showing.
-    expect(screen.queryByText("No services added yet")).not.toBeInTheDocument();
   });
 
   it("narrows results as the provider types, without exposing any service id", async () => {
@@ -110,25 +112,27 @@ describe("StepSkillsServices — search-first service selection", () => {
     await user.click(search);
     await user.type(search, "car wash");
 
-    expect(screen.getByText("Car Wash & Detailing")).toBeInTheDocument();
-    expect(screen.queryByText("Home Deep Cleaning")).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Car Wash & Detailing" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Home Deep Cleaning" })).not.toBeInTheDocument();
     expect(screen.queryByText(carWashId)).not.toBeInTheDocument();
   });
 
-  it("selecting a service from search results adds it and opens its configuration panel", async () => {
+  it("selecting a service from search results adds it as a card, expanded and ready to configure", async () => {
     setup();
     const user = userEvent.setup();
     render(<Controlled />);
 
-    const search = await screen.findByRole("combobox", { name: "Search services" });
-    await user.click(search);
+    await user.click(await screen.findByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
 
+    expect(screen.queryByText("No services added yet")).not.toBeInTheDocument();
+    expect(screen.getByText("Home Deep Cleaning")).toBeInTheDocument();
+    expect(screen.getByText("Cleaning")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Save service" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Selected services")).toHaveTextContent("Home Deep Cleaning");
+    expect(screen.getByLabelText("Price amount")).toBeInTheDocument();
   });
 
-  it("supports adding a second service while keeping the first in the selected list", async () => {
+  it("supports adding a second service, each as its own card", async () => {
     setup();
     const user = userEvent.setup();
     render(<Controlled />);
@@ -138,11 +142,11 @@ describe("StepSkillsServices — search-first service selection", () => {
     await user.click(screen.getByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Car Wash & Detailing" }));
 
-    expect(screen.getByLabelText("Selected services")).toHaveTextContent("Home Deep Cleaning");
-    expect(screen.getByLabelText("Selected services")).toHaveTextContent("Car Wash & Detailing");
+    expect(screen.getByText("Home Deep Cleaning")).toBeInTheDocument();
+    expect(screen.getByText("Car Wash & Detailing")).toBeInTheDocument();
   });
 
-  it("moves a saved service into 'Your services' with its price, and lets you edit it again", async () => {
+  it("collapses a saved service into a summary card showing its price, and can be reopened to edit", async () => {
     setup();
     const user = userEvent.setup();
     render(<Controlled />);
@@ -152,59 +156,27 @@ describe("StepSkillsServices — search-first service selection", () => {
     await user.type(screen.getByLabelText("Price amount"), "80");
     await user.click(screen.getByRole("button", { name: "Save service" }));
 
-    expect(screen.getByText("Your services")).toBeInTheDocument();
+    // Collapsed: price amount input is gone, replaced by a summary badge.
+    expect(screen.queryByLabelText("Price amount")).not.toBeInTheDocument();
     expect(screen.getByText((_, node) => node?.textContent === "INR 80")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(await screen.findByLabelText("Price amount")).toHaveValue(80);
   });
 
-  it("removes a service from the selected chips", async () => {
+  it("removes a service via its card action", async () => {
     setup();
     const user = userEvent.setup();
     render(<Controlled />);
 
     await user.click(await screen.findByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
-    await user.click(screen.getByRole("button", { name: "Remove Home Deep Cleaning" }));
+    await user.click(screen.getByRole("button", { name: "Remove service" }));
 
-    expect(screen.queryByLabelText("Selected services")).not.toBeInTheDocument();
-  });
-
-  it("shows a compact, secondary requirements preview inside the configuration panel", async () => {
-    setup();
-    mockedGetServiceRequirements.mockResolvedValue({
-      fields: [
-        {
-          id: "f1",
-          serviceId: deepCleaningId,
-          key: "rooms",
-          label: "Number of rooms",
-          fieldType: "NUMBER",
-          isRequired: true,
-          displayOrder: 0,
-          placeholder: null,
-          helpText: null,
-          minLength: null,
-          maxLength: null,
-          minValue: null,
-          maxValue: null,
-          minSelections: null,
-          maxSelections: null,
-          options: [],
-        },
-      ],
-    });
-    const user = userEvent.setup();
-    const initial: SkillsServicesDraft = {
-      skills: [],
-      services: [{ serviceId: deepCleaningId, priceAmount: "", priceCurrency: "USD", experienceYears: "", notes: "" }],
-    };
-    render(<Controlled initial={initial} />);
-
-    await user.click(await screen.findByRole("button", { name: "Edit" }));
-    expect(await screen.findByText("Customers booking this service will be asked for:")).toBeInTheDocument();
-    expect(mockedGetServiceRequirements).toHaveBeenCalledWith("home-deep-cleaning");
+    // The offering card (with its Edit/Remove actions) is gone — the name may still
+    // legitimately reappear as a "Popular services" suggestion now that it's unselected.
+    expect(screen.queryByRole("button", { name: "Remove service" })).not.toBeInTheDocument();
+    expect(screen.getByText("No services added yet")).toBeInTheDocument();
   });
 
   it("shows an error state with retry when the catalog fails to load", async () => {
@@ -217,7 +189,7 @@ describe("StepSkillsServices — search-first service selection", () => {
     expect(await screen.findByText("Couldn't load the services catalog.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Try again" }));
     await user.click(await screen.findByRole("combobox", { name: "Search services" }));
-    expect(await screen.findByText("Home Deep Cleaning")).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "Home Deep Cleaning" })).toBeInTheDocument();
   });
 
   it("blocks continuing with no service selected", async () => {
