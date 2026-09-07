@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PhotoUploader } from "@/components/provider/PhotoUploader";
-import { ApiError } from "@/lib/api/client";
 
 vi.mock("@/lib/api/provider", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/provider")>();
@@ -12,7 +11,6 @@ vi.mock("@/lib/api/provider", async (importOriginal) => {
 const { uploadMyProfilePhoto } = await import("@/lib/api/provider");
 const mockedUpload = vi.mocked(uploadMyProfilePhoto);
 
-// jsdom has no real object-URL backing store; this just needs to not throw.
 beforeEach(() => {
   mockedUpload.mockReset();
   if (!URL.createObjectURL) {
@@ -25,79 +23,108 @@ beforeEach(() => {
 
 describe("PhotoUploader", () => {
   it("shows an empty state with a clear call to action", () => {
-    render(<PhotoUploader onUploaded={vi.fn()} />);
+    render(<PhotoUploader onFileSelect={vi.fn()} />);
     expect(screen.getByText("Add profile photo")).toBeInTheDocument();
     expect(screen.getByText(/JPG, JPEG, PNG, or WebP/)).toBeInTheDocument();
   });
 
-  it("uploads a supported image, shows a preview, and reports the returned URL", async () => {
+  it("validates a supported image, displays preview, and passes pending file to onFileSelect WITHOUT calling Cloudinary", async () => {
     const user = userEvent.setup();
-    const onUploaded = vi.fn();
-    mockedUpload.mockResolvedValue("https://res.cloudinary.com/servora/image/upload/servora/providers/u1/abc.webp");
-    render(<PhotoUploader onUploaded={onUploaded} />);
+    const onFileSelect = vi.fn();
+    const { rerender } = render(<PhotoUploader onFileSelect={onFileSelect} />);
 
     const file = new File(["image"], "portrait.webp", { type: "image/webp" });
     await user.upload(screen.getByLabelText("Profile photo"), file);
 
-    await waitFor(() => expect(onUploaded).toHaveBeenCalledWith(expect.stringContaining("cloudinary.com")));
-    expect(screen.getByText("portrait.webp uploaded.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Replace photo" })).toBeInTheDocument();
+    // Verify onFileSelect was called with the file
+    expect(onFileSelect).toHaveBeenCalledWith(file);
+    // Crucial: verify that NO Cloudinary upload took place
+    expect(mockedUpload).not.toHaveBeenCalled();
+
+    // Rerender with pendingFile in state
+    rerender(<PhotoUploader pendingFile={file} onFileSelect={onFileSelect} />);
+
+    expect(screen.getByText(/Selected: portrait\.webp/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change photo" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove photo" })).toBeInTheDocument();
   });
 
-  it("rejects an unsupported file type without uploading", async () => {
+  it("rejects an unsupported file type without calling onFileSelect", async () => {
     const user = userEvent.setup({ applyAccept: false });
-    render(<PhotoUploader onUploaded={vi.fn()} />);
+    const onFileSelect = vi.fn();
+    render(<PhotoUploader onFileSelect={onFileSelect} />);
 
     await user.upload(screen.getByLabelText("Profile photo"), new File(["x"], "photo.gif", { type: "image/gif" }));
 
     expect(await screen.findByText("Choose a JPG, JPEG, PNG, or WebP image.")).toBeInTheDocument();
+    expect(onFileSelect).not.toHaveBeenCalled();
     expect(mockedUpload).not.toHaveBeenCalled();
   });
 
-  it("rejects a file over 5 MB without uploading", async () => {
+  it("rejects a file over 5 MB without calling onFileSelect", async () => {
     const user = userEvent.setup();
-    render(<PhotoUploader onUploaded={vi.fn()} />);
+    const onFileSelect = vi.fn();
+    render(<PhotoUploader onFileSelect={onFileSelect} />);
 
     const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], "big.jpg", { type: "image/jpeg" });
     await user.upload(screen.getByLabelText("Profile photo"), big);
 
     expect(await screen.findByText(/smaller than 5 MB/)).toBeInTheDocument();
+    expect(onFileSelect).not.toHaveBeenCalled();
     expect(mockedUpload).not.toHaveBeenCalled();
   });
 
-  it("shows an error state and allows retrying a failed upload", async () => {
+  it("reverts to saved photo when cancelling a pending replacement", async () => {
     const user = userEvent.setup();
-    mockedUpload.mockRejectedValueOnce(new ApiError("CLIENT_PROFILE_PHOTO_UPLOAD_FAILED", "Couldn't upload your profile photo. Please try again.", 0));
-    mockedUpload.mockResolvedValueOnce("https://res.cloudinary.com/servora/image/upload/servora/providers/u1/abc.jpg");
-    const onUploaded = vi.fn();
-    render(<PhotoUploader onUploaded={onUploaded} />);
-
-    await user.upload(screen.getByLabelText("Profile photo"), new File(["x"], "photo.jpg", { type: "image/jpeg" }));
-    expect(await screen.findByText("Couldn't upload your profile photo. Please try again.")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Retry upload" }));
-    await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(1));
-    expect(mockedUpload).toHaveBeenCalledTimes(2);
-  });
-
-  it("clears the photo and calls onRemove when removed", async () => {
-    const user = userEvent.setup();
-    mockedUpload.mockResolvedValue("https://res.cloudinary.com/servora/image/upload/servora/providers/u1/abc.png");
+    const onFileSelect = vi.fn();
     const onRemove = vi.fn();
-    render(<PhotoUploader onUploaded={vi.fn()} onRemove={onRemove} />);
 
-    await user.upload(screen.getByLabelText("Profile photo"), new File(["x"], "photo.png", { type: "image/png" }));
-    await screen.findByRole("button", { name: "Remove photo" });
+    const pending = new File(["replacement"], "replacement.png", { type: "image/png" });
+    const savedUrl = "https://res.cloudinary.com/servora/image/upload/servora/providers/u1/existing.jpg";
 
-    await user.click(screen.getByRole("button", { name: "Remove photo" }));
-    expect(onRemove).toHaveBeenCalledOnce();
-    expect(screen.getByText("Add profile photo")).toBeInTheDocument();
+    render(
+      <PhotoUploader
+        savedUrl={savedUrl}
+        pendingFile={pending}
+        onFileSelect={onFileSelect}
+        onRemove={onRemove}
+      />,
+    );
+
+    expect(screen.getByText(/Selected: replacement\.png/)).toBeInTheDocument();
+    const cancelButton = screen.getByRole("button", { name: "Cancel change" });
+    await user.click(cancelButton);
+
+    // Clears the pending file
+    expect(onFileSelect).toHaveBeenCalledWith(null);
+    // Does NOT call onRemove, because the saved photo is preserved
+    expect(onRemove).not.toHaveBeenCalled();
   });
 
-  it("shows the currently saved photo when a value is provided", () => {
-    render(<PhotoUploader value="https://res.cloudinary.com/servora/image/upload/servora/providers/u1/existing.jpg" onUploaded={vi.fn()} />);
+  it("calls onRemove when removing a saved photo with no pending replacement", async () => {
+    const user = userEvent.setup();
+    const onRemove = vi.fn();
+    const savedUrl = "https://res.cloudinary.com/servora/image/upload/servora/providers/u1/existing.jpg";
+
+    render(<PhotoUploader savedUrl={savedUrl} onRemove={onRemove} />);
+
     expect(screen.getByText("Current profile photo.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Replace photo" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Remove photo" }));
+
+    expect(onRemove).toHaveBeenCalledOnce();
+  });
+
+  it("displays uploadError and spinner when isUploading is true", () => {
+    const pending = new File(["photo"], "photo.jpg", { type: "image/jpeg" });
+    const { rerender } = render(
+      <PhotoUploader pendingFile={pending} isUploading={true} />,
+    );
+
+    expect(screen.getByText("Uploading photo.jpg…")).toBeInTheDocument();
+
+    rerender(
+      <PhotoUploader pendingFile={pending} uploadError="Upload failed from network" />,
+    );
+    expect(screen.getByText("Upload failed from network")).toBeInTheDocument();
   });
 });

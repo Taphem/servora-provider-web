@@ -30,4 +30,15 @@ export const env = {
    * full external URL is needed.
    */
   basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? "",
+
+  /**
+   * Browser-accessible Google Maps JavaScript API key. Requires Maps JavaScript API,
+   * Places API (New), and Geocoding API enabled on Google Cloud.
+   */
+  googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "",
+
+  /**
+   * Google Maps Map ID required for AdvancedMarkerElement and vector map features.
+   */
+  googleMapsMapId: process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "servora_provider_map",
 } as const;

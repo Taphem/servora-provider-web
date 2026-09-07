@@ -1,53 +1,73 @@
-"use client";
-
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { getMyProvider } from "@/lib/api/provider";
+import { ProviderContext } from "@/lib/providers/ProviderContext";
 import type { Provider } from "@/types/domain";
 
 export type ProviderQueryStatus = "loading" | "not-onboarded" | "ready" | "error";
 
-interface UseProviderResult {
+export interface UseProviderResult {
   provider: Provider | null;
   status: ProviderQueryStatus;
   error: ApiError | null;
   refetch: () => Promise<void>;
+  updateLocalProvider?: (patch: Partial<Provider>) => void;
+  setProvider?: (provider: Provider | null) => void;
 }
 
 /**
  * Fetches the authenticated user's own provider record (GET /providers/me).
- * A 404 from that endpoint is not a failure — it's the normal, expected
- * shape of "this BUSINESS_OWNER hasn't started onboarding yet" — so it's
- * surfaced as its own "not-onboarded" status rather than "error".
+ * Consumes ProviderContext when rendered inside ProviderProfileProvider,
+ * or runs standalone if rendered outside (such as in isolated unit tests).
  */
 export function useProvider(enabled: boolean): UseProviderResult {
-  const [provider, setProvider] = useState<Provider | null>(null);
-  const [status, setStatus] = useState<ProviderQueryStatus>("loading");
-  const [error, setError] = useState<ApiError | null>(null);
+  const context = useContext(ProviderContext);
 
-  const refetch = useCallback(async () => {
+  const [localProvider, setLocalProvider] = useState<Provider | null>(null);
+  const [localStatus, setLocalStatus] = useState<ProviderQueryStatus>("loading");
+  const [localError, setLocalError] = useState<ApiError | null>(null);
+
+  const standaloneRefetch = useCallback(async () => {
     if (!enabled) return;
-    setStatus("loading");
-    setError(null);
+    setLocalStatus("loading");
+    setLocalError(null);
     try {
       const result = await getMyProvider();
-      setProvider(result);
-      setStatus("ready");
+      setLocalProvider(result);
+      setLocalStatus("ready");
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
-        setProvider(null);
-        setStatus("not-onboarded");
+        setLocalProvider(null);
+        setLocalStatus("not-onboarded");
         return;
       }
-      setProvider(null);
-      setError(err instanceof ApiError ? err : null);
-      setStatus("error");
+      setLocalProvider(null);
+      setLocalError(err instanceof ApiError ? err : null);
+      setLocalStatus("error");
     }
   }, [enabled]);
 
   useEffect(() => {
-    queueMicrotask(() => void refetch());
-  }, [refetch]);
+    if (!context && enabled) {
+      queueMicrotask(() => void standaloneRefetch());
+    }
+  }, [context, enabled, standaloneRefetch]);
 
-  return { provider, status, error, refetch };
+  if (context) {
+    return {
+      provider: context.provider,
+      status: context.status,
+      error: context.error,
+      refetch: context.refetch,
+      updateLocalProvider: context.updateLocalProvider,
+      setProvider: context.setProvider,
+    };
+  }
+
+  return {
+    provider: localProvider,
+    status: localStatus,
+    error: localError,
+    refetch: standaloneRefetch,
+  };
 }

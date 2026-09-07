@@ -28,6 +28,7 @@ vi.mock("@/lib/api/provider", async (importOriginal) => {
     deleteMyServiceArea: vi.fn(),
     replaceMyWeeklyAvailability: vi.fn(),
     listSkillsCatalog: vi.fn(),
+    uploadMyProfilePhoto: vi.fn(),
   };
 });
 vi.mock("@/lib/api/services", async (importOriginal) => {
@@ -54,6 +55,7 @@ const m = {
   deleteMyServiceArea: vi.mocked(providerApi.deleteMyServiceArea),
   replaceMyWeeklyAvailability: vi.mocked(providerApi.replaceMyWeeklyAvailability),
   listSkillsCatalog: vi.mocked(providerApi.listSkillsCatalog),
+  uploadMyProfilePhoto: vi.mocked(providerApi.uploadMyProfilePhoto),
   listCatalogServices: vi.mocked(servicesApi.listCatalogServices),
   listCategories: vi.mocked(servicesApi.listCategories),
   getServiceRequirements: vi.mocked(servicesApi.getServiceRequirements),
@@ -174,6 +176,7 @@ describe("OnboardingWizard — new provider", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("Where and when can customers book you?");
 
+    await user.click(screen.getByText("+ Add an area manually without search"));
     await user.type(screen.getByLabelText("City"), "Austin");
     await user.click(screen.getByRole("button", { name: "Add area" }));
     await user.click(screen.getByRole("switch", { name: "Monday availability" }));
@@ -187,6 +190,58 @@ describe("OnboardingWizard — new provider", () => {
       expect(m.replaceMyWeeklyAvailability).toHaveBeenCalledWith([
         expect.objectContaining({ dayOfWeek: 1 }),
       ]),
+    );
+    expect(await screen.findByText("You're all set!")).toBeInTheDocument();
+  });
+
+  it("defers photo upload until final completion in step 3", async () => {
+    const user = userEvent.setup();
+    m.createMyProvider.mockResolvedValue({ id: "p1", displayName: "Asha" } as Provider);
+    m.updateMyProvider.mockResolvedValue({ id: "p1", displayName: "Asha", profilePhotoUrl: "https://res.cloudinary.com/servora/u1/photo.webp" } as Provider);
+    m.uploadMyProfilePhoto.mockResolvedValue("https://res.cloudinary.com/servora/u1/photo.webp");
+    m.replaceMySkills.mockResolvedValue({ data: [] });
+    m.createMyService.mockResolvedValue({ id: "off-1", serviceId: CLEANING_ID } as ProviderService);
+    m.createMyServiceArea.mockResolvedValue({ id: "area-1" } as ServiceArea);
+    m.replaceMyWeeklyAvailability.mockResolvedValue({ data: [] });
+
+    render(<OnboardingWizard />);
+
+    // Step 1: Select photo and enter name
+    await user.type(await screen.findByLabelText("Display name"), "Asha Cleaner");
+    const file = new File(["photo-bytes"], "avatar.webp", { type: "image/webp" });
+    await user.upload(screen.getByLabelText("Profile photo"), file);
+
+    // Verify: NO Cloudinary upload on photo selection
+    expect(m.uploadMyProfilePhoto).not.toHaveBeenCalled();
+
+    // Advance Step 1 -> Step 2
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(m.uploadMyProfilePhoto).not.toHaveBeenCalled();
+
+    // Step 2 -> Step 3
+    await screen.findByText("Build your professional offering");
+    await user.click(screen.getByRole("combobox", { name: "Search services" }));
+    await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    // Reached Step 3: still NO Cloudinary upload
+    await screen.findByText("Where and when can customers book you?");
+    expect(m.uploadMyProfilePhoto).not.toHaveBeenCalled();
+
+    // Fill Step 3 location & availability
+    await user.click(screen.getByText("+ Add an area manually without search"));
+    await user.type(screen.getByLabelText("City"), "Austin");
+    await user.click(screen.getByRole("button", { name: "Add area" }));
+    await user.click(screen.getByRole("switch", { name: "Monday availability" }));
+
+    // Click Finish setup -> NOW Cloudinary upload occurs exactly once
+    await user.click(screen.getByRole("button", { name: "Finish setup" }));
+
+    await waitFor(() => expect(m.uploadMyProfilePhoto).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(m.updateMyProvider).toHaveBeenCalledWith(
+        expect.objectContaining({ profilePhotoUrl: "https://res.cloudinary.com/servora/u1/photo.webp" }),
+      ),
     );
     expect(await screen.findByText("You're all set!")).toBeInTheDocument();
   });

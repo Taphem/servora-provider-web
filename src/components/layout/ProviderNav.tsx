@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, UserRound, Wrench, CalendarClock, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useProvider } from "@/hooks/useProvider";
+import { Avatar } from "@/components/ui/Avatar";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -16,6 +18,7 @@ const links = [
 export function ProviderNav() {
   const pathname = usePathname();
   const { user, status, signOut } = useAuth();
+  const { provider } = useProvider(status === "authenticated");
 
   return (
     <header className="sticky top-0 z-(--z-nav) border-b border-border-default bg-surface-raised/95 backdrop-blur-sm">
@@ -50,7 +53,17 @@ export function ProviderNav() {
 
         {status === "authenticated" && user ? (
           <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-text-secondary sm:inline">{user.email}</span>
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 rounded-full p-0.5 text-ink-700 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              aria-label="Provider profile"
+            >
+              <Avatar
+                src={provider?.profilePhotoUrl}
+                fallback={provider?.displayName ?? user.email}
+                size="sm"
+              />
+            </Link>
             <button
               type="button"
               onClick={() => void signOut()}

@@ -73,7 +73,16 @@ export function StepAboutYou({ value, onChange, onContinue }: StepAboutYouProps)
         </p>
       </div>
 
-      <PhotoUploader value={value.photoUrl || null} onUploaded={(url) => update("photoUrl", url)} onRemove={() => update("photoUrl", "")} />
+      <PhotoUploader
+        savedUrl={value.photoUrl || null}
+        pendingFile={value.pendingPhotoFile}
+        onFileSelect={(file) => update("pendingPhotoFile", file)}
+        onRemove={() => {
+          update("pendingPhotoFile", null);
+          update("photoUrl", "");
+        }}
+        disabled={submitting}
+      />
 
       <Input
         label="Display name"
