@@ -334,4 +334,64 @@ describe("OnboardingWizard — resuming an existing provider", () => {
     expect(await screen.findByText("Couldn't load your progress so far. Please try again.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
+
+  it("displays a service-save error, NOT a catalog error, when POST /providers/me/services fails", async () => {
+    const user = userEvent.setup();
+    m.listMyServices.mockResolvedValue({ data: [] });
+    m.listMyServiceAreas.mockResolvedValue({ data: [] });
+    m.listMyWeeklyAvailability.mockResolvedValue({ data: [] });
+    m.replaceMySkills.mockResolvedValue({ data: [] });
+    m.createMyService.mockRejectedValue(new Error("502 Bad Gateway"));
+
+    render(<OnboardingWizard />);
+    expect(await screen.findByText("Build your professional offering")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("combobox", { name: "Search services" }));
+    await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByText("We couldn't save this service. Please try again.")).toBeInTheDocument();
+    expect(screen.queryByText(/service catalog is currently unavailable/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Where and when can customers book you?")).not.toBeInTheDocument();
+  });
+
+  it("updates an existing saved service when continuing Step 2", async () => {
+    const user = userEvent.setup();
+    m.listMyServices.mockResolvedValue({
+      data: [
+        {
+          id: "off-existing",
+          providerId: "p1",
+          serviceId: CLEANING_ID,
+          isEnabled: true,
+          priceAmount: "41341.00",
+          priceCurrency: "INR",
+          experienceYears: 4,
+          notes: "Specialist",
+          createdAt: "",
+          updatedAt: "",
+        } as ProviderService,
+      ],
+    });
+    m.listMyServiceAreas.mockResolvedValue({ data: [] });
+    m.listMyWeeklyAvailability.mockResolvedValue({ data: [] });
+    m.replaceMySkills.mockResolvedValue({ data: [] });
+    m.updateMyService.mockResolvedValue({ id: "off-existing", serviceId: CLEANING_ID } as ProviderService);
+
+    render(<OnboardingWizard />);
+    expect(await screen.findByText("Where and when can customers book you?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByText("Build your professional offering")).toBeInTheDocument();
+    expect(screen.getByText("Home Deep Cleaning")).toBeInTheDocument();
+    expect(screen.getByText("INR 41341.00")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await waitFor(() =>
+      expect(m.updateMyService).toHaveBeenCalledWith(
+        "off-existing",
+        expect.objectContaining({ priceAmount: 41341, priceCurrency: "INR", experienceYears: 4 }),
+      ),
+    );
+  });
 });
