@@ -64,7 +64,6 @@ export async function uploadMyProfilePhoto(file: File): Promise<string> {
   form.set('public_id', signed.publicId);
   form.set('upload_preset', signed.uploadPreset);
   form.set('allowed_formats', signed.allowedFormats.join(','));
-  form.set('max_file_size', String(signed.maxBytes));
 
   let response: Response;
   try {

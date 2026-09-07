@@ -64,7 +64,7 @@ describe("uploadMyProfilePhoto", () => {
     expect(form.get("public_id")).toBe(signature.publicId);
     expect(form.get("upload_preset")).toBe(signature.uploadPreset);
     expect(form.get("allowed_formats")).toBe("jpg,jpeg,png,webp");
-    expect(form.get("max_file_size")).toBe(String(signature.maxBytes));
+    expect(form.get("max_file_size")).toBeNull();
   });
 
   it("surfaces Cloudinary's own error message instead of a generic one, so a Render misconfiguration is diagnosable", async () => {
