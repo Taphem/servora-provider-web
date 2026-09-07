@@ -118,6 +118,17 @@ export function listMySkills(): Promise<{ data: Skill[] }> {
   return apiRequest<{ data: Skill[] }>("/api/v1/providers/me/skills");
 }
 
+/**
+ * Creates a provider-defined skill (e.g. "Split AC servicing") that has no
+ * corresponding entry in the Services catalog — or, if another provider
+ * already created a skill with the same name, returns that existing one.
+ * Does not associate it with the caller by itself; pass its id in the next
+ * replaceMySkills call.
+ */
+export function createMySkill(name: string): Promise<Skill> {
+  return apiRequest<Skill>("/api/v1/providers/me/skills", { method: "POST", body: { name } });
+}
+
 /** Atomic replace — sends the caller's full desired skill-id set. */
 export function replaceMySkills(skillIds: string[]): Promise<{ data: Skill[] }> {
   return apiRequest<{ data: Skill[] }>("/api/v1/providers/me/skills", { method: "PUT", body: { skillIds } });

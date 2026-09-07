@@ -1,19 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Pencil, Search, Trash2, X } from "lucide-react";
+import { Check, Pencil, Search, Sparkles, Trash2, X } from "lucide-react";
 import type { ZodIssue } from "zod";
-import { listSkillsCatalog } from "@/lib/api/provider";
 import { listCatalogServices, listCategories } from "@/lib/api/services";
 import { createProviderServiceSchema } from "@/lib/validation/provider";
-import type { CatalogService, Category, Skill } from "@/types/domain";
+import { CURRENCY_OPTIONS, DEFAULT_CURRENCY } from "@/lib/currencies";
+import type { CatalogService, Category } from "@/types/domain";
 import type { ServiceDraft, SkillsServicesDraft } from "@/components/provider/onboarding/types";
 import { RequirementsPreview } from "@/components/provider/onboarding/RequirementsPreview";
+import { SkillsExpertise } from "@/components/provider/onboarding/SkillsExpertise";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 
 type LoadStatus = "loading" | "ready" | "error";
@@ -26,23 +29,21 @@ interface StepSkillsServicesProps {
 }
 
 export function StepSkillsServices({ value, onChange, onContinue, onBack }: StepSkillsServicesProps) {
-  const [skillsCatalog, setSkillsCatalog] = useState<Skill[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<CatalogService[]>([]);
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const load = useCallback(async () => {
     setStatus("loading");
     try {
-      const [skillsPage, categoriesPage, servicesPage] = await Promise.all([
-        listSkillsCatalog({ pageSize: 100 }),
+      const [categoriesPage, servicesPage] = await Promise.all([
         listCategories({ pageSize: 100 }),
         listCatalogServices({ pageSize: 100 }),
       ]);
-      setSkillsCatalog(skillsPage.data);
       setCategories(categoriesPage.data);
       setServices(servicesPage.data);
       setStatus("ready");
@@ -59,18 +60,13 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
   const serviceById = useMemo(() => new Map(services.map((s) => [s.id, s])), [services]);
   const draftByServiceId = useMemo(() => new Map(value.services.map((d) => [d.serviceId, d])), [value.services]);
 
-  function toggleSkill(skillId: string) {
-    const has = value.skillIds.includes(skillId);
-    onChange({ ...value, skillIds: has ? value.skillIds.filter((id) => id !== skillId) : [...value.skillIds, skillId] });
-  }
-
   function toggleService(serviceId: string) {
     const existing = draftByServiceId.get(serviceId);
     if (existing) {
       onChange({ ...value, services: value.services.filter((d) => d.serviceId !== serviceId) });
       if (activeServiceId === serviceId) setActiveServiceId(null);
     } else {
-      const draft: ServiceDraft = { serviceId, priceAmount: "", priceCurrency: "USD", experienceYears: "", notes: "" };
+      const draft: ServiceDraft = { serviceId, priceAmount: "", priceCurrency: DEFAULT_CURRENCY, experienceYears: "", notes: "" };
       onChange({ ...value, services: [...value.services, draft] });
       setActiveServiceId(serviceId);
     }
@@ -127,8 +123,7 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
       <div>
         <h1 className="font-display text-h2 text-ink-900">What do you do?</h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-secondary">
-          Search for the services you&apos;re qualified to provide. You set your own price for each one
-          — it&apos;s independent of the catalog&apos;s reference price.
+          Choose the services you offer, then tell customers what you&apos;re especially good at.
         </p>
       </div>
 
@@ -148,33 +143,6 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
         />
       ) : (
         <>
-          {skillsCatalog.length > 0 ? (
-            <div>
-              <p className="mb-2 text-sm font-medium text-ink-700">Skills</p>
-              <div className="flex flex-wrap gap-2">
-                {skillsCatalog.map((skill) => {
-                  const active = value.skillIds.includes(skill.id);
-                  return (
-                    <button
-                      key={skill.id}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => toggleSkill(skill.id)}
-                      className={cn(
-                        "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors duration-[var(--duration-fast)]",
-                        active
-                          ? "border-brand-500 bg-brand-50 text-brand-700"
-                          : "border-border-default bg-surface-raised text-ink-600 hover:border-border-strong",
-                      )}
-                    >
-                      {skill.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-
           <div>
             <p className="mb-2 text-sm font-medium text-ink-700">Search for a service you provide</p>
             <ServiceSearch
@@ -182,7 +150,34 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
               categoryName={categoryName}
               selectedServiceIds={new Set(value.services.map((d) => d.serviceId))}
               onToggle={toggleService}
+              onOpenChange={setSearchOpen}
             />
+
+            {value.services.length === 0 && !searchOpen ? (
+              <EmptyState
+                className="mt-4"
+                icon={<Search size={20} aria-hidden />}
+                title="No services added yet"
+                description="Start by searching for a service you provide."
+                action={
+                  services.length > 0 ? (
+                    <div className="mt-1 flex flex-wrap justify-center gap-2">
+                      {services.slice(0, 6).map((service) => (
+                        <button
+                          key={service.id}
+                          type="button"
+                          onClick={() => toggleService(service.id)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-raised px-3 py-1.5 text-sm text-ink-700 hover:border-border-strong"
+                        >
+                          <Sparkles size={13} className="text-brand-500" aria-hidden />
+                          {service.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : undefined
+                }
+              />
+            ) : null}
 
             {value.services.length > 0 ? (
               <ul className="mt-4 flex flex-wrap gap-2" aria-label="Selected services">
@@ -283,6 +278,8 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
               </div>
             </div>
           ) : null}
+
+          <SkillsExpertise value={value.skills} onChange={(skills) => onChange({ ...value, skills })} />
         </>
       )}
 
@@ -309,16 +306,26 @@ function ServiceSearch({
   categoryName,
   selectedServiceIds,
   onToggle,
+  onOpenChange,
 }: {
   services: CatalogService[];
   categoryName: Map<string, string>;
   selectedServiceIds: Set<string>;
   onToggle: (serviceId: string) => void;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
+
+  const setOpen = useCallback(
+    (next: boolean) => {
+      setOpenState(next);
+      onOpenChange?.(next);
+    },
+    [onOpenChange],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -327,7 +334,7 @@ function ServiceSearch({
     }
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open]);
+  }, [open, setOpen]);
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -349,6 +356,7 @@ function ServiceSearch({
         <input
           ref={inputRef}
           role="combobox"
+          aria-label="Search services"
           aria-expanded={open}
           aria-controls="service-search-listbox"
           aria-autocomplete="list"
@@ -473,12 +481,12 @@ function ServiceConfigPanel({
         <div className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-ink-700">Your price</span>
           <div className="flex gap-2">
-            <Input
+            <Select
               aria-label="Currency"
-              className="w-20 shrink-0"
+              className="w-36 shrink-0"
               value={draft.priceCurrency}
               onChange={(e) => onChange({ priceCurrency: e.target.value })}
-              maxLength={3}
+              options={CURRENCY_OPTIONS.map((c) => ({ value: c.code, label: c.label }))}
             />
             <Input
               aria-label="Price amount"

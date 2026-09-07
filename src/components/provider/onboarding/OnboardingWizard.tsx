@@ -78,7 +78,7 @@ export function OnboardingWizard() {
         experienceYears: offering.experienceYears != null ? String(offering.experienceYears) : "",
         notes: offering.notes ?? "",
       }));
-      setSkillsServices({ skillIds: mySkills.data.map((s) => s.id), services });
+      setSkillsServices({ skills: mySkills.data, services });
       initialOfferingIds.current = new Set(myServices.data.map((s) => s.id));
 
       const areas: AreaDraft[] = myAreas.data.map((area) => ({
@@ -175,7 +175,7 @@ export function OnboardingWizard() {
   }
 
   async function persistSkillsServices() {
-    await replaceMySkills(skillsServices.skillIds);
+    await replaceMySkills(skillsServices.skills.map((s) => s.id));
 
     const currentOfferingIds = new Set(
       skillsServices.services.map((s) => s.offeringId).filter((id): id is string => Boolean(id)),

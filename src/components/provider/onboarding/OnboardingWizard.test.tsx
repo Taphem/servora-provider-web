@@ -134,7 +134,7 @@ describe("OnboardingWizard — new provider", () => {
     // Forward again into step 2, select a service, and continue.
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("What do you do?");
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
@@ -169,7 +169,7 @@ describe("OnboardingWizard — new provider", () => {
     await user.type(await screen.findByLabelText("Display name"), "Asha Cleaner");
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("What do you do?");
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("Where and when can customers book you?");
@@ -201,7 +201,7 @@ describe("OnboardingWizard — new provider", () => {
     await user.type(await screen.findByLabelText("Display name"), "Asha Cleaner");
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("What do you do?");
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("Where and when can customers book you?");

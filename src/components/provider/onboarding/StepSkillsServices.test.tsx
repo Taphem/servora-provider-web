@@ -82,19 +82,23 @@ function Controlled({ initial = emptySkillsServices() }: { initial?: SkillsServi
 }
 
 describe("StepSkillsServices — search-first service selection", () => {
-  it("shows nothing until the search box is used, then groups matches under real category headers", async () => {
+  it("shows an intentional empty state with suggested services before the dropdown is opened, then groups matches under real category headers once opened", async () => {
     setup();
     const user = userEvent.setup();
     render(<Controlled />);
 
-    const search = await screen.findByRole("combobox");
-    expect(screen.queryByText("Home Deep Cleaning")).not.toBeInTheDocument();
+    const search = await screen.findByRole("combobox", { name: "Search services" });
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.getByText("No services added yet")).toBeInTheDocument();
+    expect(screen.getByText("Start by searching for a service you provide.")).toBeInTheDocument();
 
     await user.click(search);
     expect(screen.getByText("Cleaning")).toBeInTheDocument();
     expect(screen.getByText("Auto")).toBeInTheDocument();
-    expect(screen.getByText("Home Deep Cleaning")).toBeInTheDocument();
-    expect(screen.getByText("Car Wash & Detailing")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Home Deep Cleaning" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Car Wash & Detailing" })).toBeInTheDocument();
+    // The empty state (and its duplicate suggestion chips) steps aside while results are showing.
+    expect(screen.queryByText("No services added yet")).not.toBeInTheDocument();
   });
 
   it("narrows results as the provider types, without exposing any service id", async () => {
@@ -102,7 +106,7 @@ describe("StepSkillsServices — search-first service selection", () => {
     const user = userEvent.setup();
     render(<Controlled />);
 
-    const search = await screen.findByRole("combobox");
+    const search = await screen.findByRole("combobox", { name: "Search services" });
     await user.click(search);
     await user.type(search, "car wash");
 
@@ -116,7 +120,7 @@ describe("StepSkillsServices — search-first service selection", () => {
     const user = userEvent.setup();
     render(<Controlled />);
 
-    const search = await screen.findByRole("combobox");
+    const search = await screen.findByRole("combobox", { name: "Search services" });
     await user.click(search);
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
 
@@ -129,9 +133,9 @@ describe("StepSkillsServices — search-first service selection", () => {
     const user = userEvent.setup();
     render(<Controlled />);
 
-    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Car Wash & Detailing" }));
 
     expect(screen.getByLabelText("Selected services")).toHaveTextContent("Home Deep Cleaning");
@@ -143,13 +147,13 @@ describe("StepSkillsServices — search-first service selection", () => {
     const user = userEvent.setup();
     render(<Controlled />);
 
-    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.type(screen.getByLabelText("Price amount"), "80");
     await user.click(screen.getByRole("button", { name: "Save service" }));
 
     expect(screen.getByText("Your services")).toBeInTheDocument();
-    expect(screen.getByText((_, node) => node?.textContent === "USD 80")).toBeInTheDocument();
+    expect(screen.getByText((_, node) => node?.textContent === "INR 80")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(await screen.findByLabelText("Price amount")).toHaveValue(80);
@@ -160,7 +164,7 @@ describe("StepSkillsServices — search-first service selection", () => {
     const user = userEvent.setup();
     render(<Controlled />);
 
-    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByRole("combobox", { name: "Search services" }));
     await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
     await user.click(screen.getByRole("button", { name: "Remove Home Deep Cleaning" }));
 
@@ -193,7 +197,7 @@ describe("StepSkillsServices — search-first service selection", () => {
     });
     const user = userEvent.setup();
     const initial: SkillsServicesDraft = {
-      skillIds: [],
+      skills: [],
       services: [{ serviceId: deepCleaningId, priceAmount: "", priceCurrency: "USD", experienceYears: "", notes: "" }],
     };
     render(<Controlled initial={initial} />);
@@ -212,7 +216,7 @@ describe("StepSkillsServices — search-first service selection", () => {
 
     expect(await screen.findByText("Couldn't load the services catalog.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Try again" }));
-    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByRole("combobox", { name: "Search services" }));
     expect(await screen.findByText("Home Deep Cleaning")).toBeInTheDocument();
   });
 
@@ -221,8 +225,47 @@ describe("StepSkillsServices — search-first service selection", () => {
     const user = userEvent.setup();
     render(<Controlled />);
 
-    await screen.findByRole("combobox");
+    await screen.findByRole("combobox", { name: "Search services" });
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByText("Search for and select at least one service you're qualified to provide.")).toBeInTheDocument();
+  });
+});
+
+describe("StepSkillsServices — currency", () => {
+  it("defaults a newly configured service's price to INR, offered as a select rather than free text", async () => {
+    setup();
+    const user = userEvent.setup();
+    render(<Controlled />);
+
+    await user.click(await screen.findByRole("combobox", { name: "Search services" }));
+    await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
+
+    const currency = await screen.findByLabelText("Currency");
+    expect(currency.tagName).toBe("SELECT");
+    expect(currency).toHaveValue("INR");
+  });
+
+  it("offers INR and USD as the only currency choices", async () => {
+    setup();
+    const user = userEvent.setup();
+    render(<Controlled />);
+
+    await user.click(await screen.findByRole("combobox", { name: "Search services" }));
+    await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
+
+    const currency = await screen.findByLabelText("Currency");
+    const optionValues = Array.from(currency.querySelectorAll("option")).map((o) => o.getAttribute("value"));
+    expect(optionValues).toEqual(["INR", "USD"]);
+  });
+
+  it("keeps price as a plain numeric input", async () => {
+    setup();
+    const user = userEvent.setup();
+    render(<Controlled />);
+
+    await user.click(await screen.findByRole("combobox", { name: "Search services" }));
+    await user.click(screen.getByRole("option", { name: "Home Deep Cleaning" }));
+
+    expect(screen.getByLabelText("Price amount")).toHaveAttribute("type", "number");
   });
 });

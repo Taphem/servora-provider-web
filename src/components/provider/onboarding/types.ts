@@ -1,3 +1,5 @@
+import type { Skill } from "@/types/domain";
+
 /** Wizard-local draft state for each step. Kept as strings for form inputs; parsed/validated only when a step's Continue is pressed. */
 
 export interface AboutYouDraft {
@@ -21,7 +23,8 @@ export interface ServiceDraft {
 }
 
 export interface SkillsServicesDraft {
-  skillIds: string[];
+  /** Provider-defined expertise — independent of the Services catalog and independent of `services` below. */
+  skills: Skill[];
   services: ServiceDraft[];
 }
 
@@ -64,7 +67,7 @@ export function emptyAboutYou(): AboutYouDraft {
 }
 
 export function emptySkillsServices(): SkillsServicesDraft {
-  return { skillIds: [], services: [] };
+  return { skills: [], services: [] };
 }
 
 export function emptyServiceAreaAvailability(): ServiceAreaAvailabilityDraft {
