@@ -152,7 +152,7 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
       </div>
 
       {status === "loading" ? (
-        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <Skeleton className="h-72 w-full rounded-xl" />
           <Skeleton className="h-72 w-full rounded-xl" />
         </div>
@@ -166,8 +166,8 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
           }
         />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[1fr_340px] lg:items-start">
-          <Card className="p-6 sm:p-7">
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
+          <Card className="p-5 sm:p-6 lg:p-7">
             <PanelHeading
               icon={<Wrench size={14} aria-hidden />}
               eyebrow="Services"
@@ -231,7 +231,7 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
             )}
           </Card>
 
-          <Card className="p-6 sm:p-7">
+          <Card className="p-5 sm:p-6 lg:p-7">
             <PanelHeading
               icon={<Sparkles size={14} aria-hidden />}
               eyebrow="Expertise"
@@ -244,9 +244,9 @@ export function StepSkillsServices({ value, onChange, onContinue, onBack }: Step
       )}
 
       {formError ? (
-        <p role="alert" className="text-sm text-error">
+        <div role="alert" className="rounded-lg border border-error-200 bg-error-50 p-4 text-sm text-error">
           {formError}
-        </p>
+        </div>
       ) : null}
 
       <div className="flex justify-between">
@@ -390,7 +390,10 @@ function ServiceOfferingCard({
   onRemove: () => void;
 }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const hasPrice = Boolean(draft.priceAmount && draft.priceCurrency);
+  const hasPrice = Boolean(draft.priceAmount && draft.priceAmount.trim() !== "" && draft.priceCurrency);
+  const formattedPrice = hasPrice
+    ? `${draft.priceCurrency.trim().toUpperCase()} ${draft.priceAmount.trim()}`
+    : "Not set";
 
   function handleSave() {
     const raw = {
@@ -421,22 +424,24 @@ function ServiceOfferingCard({
         expanded ? "border-brand-300 shadow-sm" : "border-border-default",
       )}
     >
-      <div className="flex items-start justify-between gap-4 p-5">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700">
-            <Sparkles size={14} aria-hidden />
+      <div className="flex items-center justify-between gap-3 p-4 sm:p-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700">
+            <Sparkles size={15} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="truncate font-display text-base text-ink-900">{service?.name ?? "Service"}</p>
-            {categoryLabel ? <p className="mt-0.5 text-xs text-text-muted">{categoryLabel}</p> : null}
+            <p className="truncate font-display text-sm sm:text-base font-semibold text-ink-900">
+              {service?.name ?? "Service"}
+            </p>
+            {categoryLabel ? <p className="mt-0.5 truncate text-xs text-text-muted">{categoryLabel}</p> : null}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {!expanded ? (
             <div className="mr-1 text-right">
               <p className="text-[0.65rem] uppercase tracking-wide text-text-muted">Starting price</p>
-              <p className={cn("text-sm font-semibold", hasPrice ? "text-ink-900" : "text-text-muted")}>
-                {hasPrice ? `${draft.priceCurrency} ${draft.priceAmount}` : "Not set"}
+              <p className={cn("text-xs sm:text-sm font-semibold", hasPrice ? "text-ink-900" : "text-text-muted")}>
+                {formattedPrice}
               </p>
             </div>
           ) : null}
@@ -447,6 +452,7 @@ function ServiceOfferingCard({
             icon={<Trash2 size={14} aria-hidden />}
             onClick={onRemove}
             aria-label="Remove service"
+            className="text-text-muted hover:text-error"
           >
             <span className="sr-only">Remove</span>
           </Button>
@@ -464,18 +470,24 @@ function ServiceOfferingCard({
       </div>
 
       {expanded ? (
-        <div className="flex flex-col gap-4 border-t border-border-subtle bg-surface-sunken/50 p-5">
-          <div>
-            <span className="text-sm font-medium text-ink-700">Your starting price</span>
-            <div className="mt-1.5 flex gap-2">
+        <div className="flex flex-col gap-4 border-t border-border-subtle bg-surface-sunken/40 p-4 sm:p-5">
+          {/* Responsive Inputs Grid */}
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[160px_minmax(140px,0.9fr)_minmax(140px,0.9fr)_minmax(220px,1.4fr)] items-start">
+            {/* Currency */}
+            <div className="col-span-1">
               <Select
-                aria-label="Currency"
-                className="w-40 shrink-0"
+                label="Currency"
                 value={draft.priceCurrency}
                 onChange={(e) => onChange({ priceCurrency: e.target.value })}
+                errorText={errors.priceCurrency}
                 options={CURRENCY_OPTIONS.map((c) => ({ value: c.code, label: c.label }))}
               />
+            </div>
+
+            {/* Starting price */}
+            <div className="col-span-1">
               <Input
+                label="Starting price"
                 aria-label="Price amount"
                 type="number"
                 min={0}
@@ -483,35 +495,42 @@ function ServiceOfferingCard({
                 value={draft.priceAmount}
                 onChange={(e) => onChange({ priceAmount: e.target.value })}
                 errorText={errors.priceAmount}
-                placeholder="Optional"
-                className="flex-1"
+                placeholder="Optional (e.g. 49)"
+              />
+            </div>
+
+            {/* Experience */}
+            <div className="col-span-1 sm:col-span-1">
+              <Input
+                label="Experience (yrs)"
+                type="number"
+                min={0}
+                max={100}
+                value={draft.experienceYears}
+                onChange={(e) => onChange({ experienceYears: e.target.value })}
+                errorText={errors.experienceYears}
+                placeholder="Optional (e.g. 5)"
+              />
+            </div>
+
+            {/* Additional notes */}
+            <div className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-1">
+              <Input
+                label="Additional notes"
+                value={draft.notes}
+                onChange={(e) => onChange({ notes: e.target.value })}
+                errorText={errors.notes}
+                placeholder="Tell customers about your expertise…"
               />
             </div>
           </div>
 
-          <Input
-            label="Experience"
-            type="number"
-            min={0}
-            max={100}
-            value={draft.experienceYears}
-            onChange={(e) => onChange({ experienceYears: e.target.value })}
-            errorText={errors.experienceYears}
-            placeholder="Years of experience with this service"
-            className="sm:max-w-xs"
-          />
-
-          <Input
-            label="Notes"
-            value={draft.notes}
-            onChange={(e) => onChange({ notes: e.target.value })}
-            errorText={errors.notes}
-            placeholder="Tell customers about your expertise…"
-          />
-
           {service ? <RequirementsPreview serviceIdOrSlug={service.slug} /> : null}
 
-          <div>
+          <div className="flex items-center justify-between pt-1">
+            <p className="text-xs text-text-muted">
+              {hasPrice ? `Preview: ${formattedPrice}` : "Price and experience are optional"}
+            </p>
             <Button type="button" size="sm" onClick={handleSave}>
               Save service
             </Button>

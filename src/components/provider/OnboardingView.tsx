@@ -5,7 +5,7 @@ import { OnboardingWizard } from "@/components/provider/onboarding/OnboardingWiz
 
 export function OnboardingView() {
   return (
-    <div className="container-servora max-w-4xl py-10">
+    <div className="container-servora max-w-6xl py-8 sm:py-10">
       <AccessBoundary>
         <OnboardingWizard />
       </AccessBoundary>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
+import { ApiError } from "@/lib/api/client";
 import { useProvider } from "@/hooks/useProvider";
 import {
   createMyProvider,
@@ -178,13 +179,23 @@ export function OnboardingWizard() {
   }
 
   async function persistSkillsServices() {
-    await replaceMySkills(skillsServices.skills.map((s) => s.id));
+    try {
+      await replaceMySkills(skillsServices.skills.map((s) => s.id));
+    } catch {
+      throw new Error("We couldn't save your skills. Please try again.");
+    }
 
     const currentOfferingIds = new Set(
       skillsServices.services.map((s) => s.offeringId).filter((id): id is string => Boolean(id)),
     );
     for (const id of initialOfferingIds.current) {
-      if (!currentOfferingIds.has(id)) await deleteMyService(id);
+      if (!currentOfferingIds.has(id)) {
+        try {
+          await deleteMyService(id);
+        } catch {
+          throw new Error("We couldn't remove the deleted service. Please try again.");
+        }
+      }
     }
 
     const updated: ServiceDraft[] = [];
@@ -195,12 +206,19 @@ export function OnboardingWizard() {
         experienceYears: draft.experienceYears.trim() === "" ? null : Number(draft.experienceYears),
         notes: draft.notes.trim() || null,
       };
-      if (draft.offeringId) {
-        await updateMyService(draft.offeringId, patch);
-        updated.push(draft);
-      } else {
-        const created = await createMyService({ serviceId: draft.serviceId, ...patch });
-        updated.push({ ...draft, offeringId: created.id });
+      try {
+        if (draft.offeringId) {
+          await updateMyService(draft.offeringId, patch);
+          updated.push(draft);
+        } else {
+          const created = await createMyService({ serviceId: draft.serviceId, ...patch });
+          updated.push({ ...draft, offeringId: created.id });
+        }
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 409) {
+          throw new Error("This service has already been added to your profile.");
+        }
+        throw new Error("We couldn't save this service. Please try again.");
       }
     }
     setSkillsServices((prev) => ({ ...prev, services: updated }));

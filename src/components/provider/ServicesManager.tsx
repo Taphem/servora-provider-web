@@ -123,7 +123,7 @@ function ServiceOfferingRow({
       await updateMyService(offering.id, { isEnabled: !offering.isEnabled });
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't update this service.");
+      setError(err instanceof ApiError && err.status >= 500 ? "We couldn't update this service. Please try again." : (err instanceof ApiError ? err.message : "Couldn't update this service."));
     } finally {
       setPending(false);
     }
@@ -136,7 +136,7 @@ function ServiceOfferingRow({
       await deleteMyService(offering.id);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't remove this service.");
+      setError(err instanceof ApiError && err.status >= 500 ? "We couldn't remove this service. Please try again." : (err instanceof ApiError ? err.message : "Couldn't remove this service."));
       setPending(false);
     }
   }
@@ -234,7 +234,11 @@ function AddServiceForm({
       setNotes("");
       onAdded();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Couldn't add this service.");
+      if (err instanceof ApiError && err.status === 409) {
+        setFormError("This service has already been added.");
+      } else {
+        setFormError("We couldn't save this service. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
