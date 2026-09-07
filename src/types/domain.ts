@@ -66,7 +66,14 @@ export interface ProfilePhotoUploadSignature {
   maxBytes: number;
 }
 
-export type UpdateProviderInput = Partial<CreateProviderInput>;
+export type UpdateProviderInput = Partial<
+  Omit<CreateProviderInput, "bio" | "profilePhotoUrl" | "yearsExperience" | "businessName">
+> & {
+  bio?: string | null;
+  profilePhotoUrl?: string | null;
+  yearsExperience?: number | null;
+  businessName?: string | null;
+};
 
 export type SkillStatus = "ACTIVE" | "INACTIVE";
 

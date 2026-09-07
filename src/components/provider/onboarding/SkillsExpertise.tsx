@@ -19,9 +19,9 @@ type LoadStatus = "loading" | "ready" | "error";
  * Provider-defined expertise — deliberately independent of the Services
  * catalog. A skill here does not need to correspond to any catalog service
  * (e.g. "Gas charging" for a provider who offers "AC Repair"). The catalog
- * (GET /providers/skills) is used only as autocomplete suggestions; typing
- * a name that doesn't match anything lets the provider create it for real
- * via POST /providers/me/skills — this is never a display-only chip.
+ * (GET /providers/skills) is used only as autocomplete suggestions inside
+ * the popover; typing a name that doesn't match anything lets the provider
+ * create it for real via POST /providers/me/skills — never a display-only chip.
  */
 export function SkillsExpertise({ value, onChange }: SkillsExpertiseProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -64,8 +64,6 @@ export function SkillsExpertise({ value, onChange }: SkillsExpertiseProps) {
     [catalog, query],
   );
 
-  const suggested = useMemo(() => catalog.filter((s) => !selectedIds.has(s.id)).slice(0, 6), [catalog, selectedIds]);
-
   function addSkill(skill: Skill) {
     if (selectedIds.has(skill.id)) return;
     onChange([...value, skill]);
@@ -102,14 +100,9 @@ export function SkillsExpertise({ value, onChange }: SkillsExpertiseProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-sm font-medium text-ink-700">Skills & expertise</p>
-        <p className="mt-0.5 text-sm text-text-secondary">Tell customers what you&apos;re especially good at.</p>
-      </div>
-
-      <div ref={rootRef} className="relative w-full max-w-sm">
+      <div ref={rootRef} className="relative w-full">
         <div className="relative">
-          <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-tertiary" aria-hidden />
+          <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary" aria-hidden />
           <input
             role="combobox"
             aria-label="Search or add a skill"
@@ -130,8 +123,8 @@ export function SkillsExpertise({ value, onChange }: SkillsExpertiseProps) {
               }
             }}
             className={cn(
-              "h-11 w-full border bg-surface-raised pl-10 pr-4 text-sm text-ink-900 placeholder:text-text-tertiary transition-colors duration-[var(--duration-fast)]",
-              open ? "rounded-t-md border-b-transparent" : "rounded-md",
+              "h-12 w-full border bg-surface-raised pl-11 pr-4 text-sm text-ink-900 placeholder:text-text-tertiary transition-colors duration-[var(--duration-fast)]",
+              open ? "rounded-t-lg border-b-transparent" : "rounded-lg",
               "border-border-default hover:border-border-strong focus:border-primary",
             )}
           />
@@ -143,7 +136,7 @@ export function SkillsExpertise({ value, onChange }: SkillsExpertiseProps) {
             role="listbox"
             aria-label="Skills"
             aria-multiselectable="true"
-            className="absolute z-(--z-overlay) max-h-64 w-full overflow-y-auto rounded-b-md border border-t border-border-default bg-surface-raised py-1 shadow-lg"
+            className="absolute z-(--z-overlay) max-h-64 w-full overflow-y-auto rounded-b-lg border border-t border-border-default bg-surface-raised py-1 shadow-lg"
           >
             {status === "loading" ? (
               <p className="flex items-center gap-2 px-4 py-3 text-sm text-text-muted">
@@ -163,7 +156,7 @@ export function SkillsExpertise({ value, onChange }: SkillsExpertiseProps) {
                         toggleSkill(skill);
                       }}
                       className={cn(
-                        "flex cursor-pointer items-center gap-2 px-4 py-2 text-sm text-ink-900 hover:bg-ink-50",
+                        "flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm text-ink-900 hover:bg-ink-50",
                         selected && "font-medium text-brand-700",
                       )}
                     >
@@ -180,7 +173,7 @@ export function SkillsExpertise({ value, onChange }: SkillsExpertiseProps) {
                       void handleCreate();
                     }}
                     disabled={creating}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-60"
+                    className="flex w-full items-center gap-2 border-t border-border-subtle px-4 py-2.5 text-left text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-60"
                   >
                     {creating ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Plus size={14} aria-hidden />}
                     Add &quot;{query.trim()}&quot; as a new skill
@@ -203,31 +196,13 @@ export function SkillsExpertise({ value, onChange }: SkillsExpertiseProps) {
         </p>
       ) : null}
 
-      {suggested.length > 0 ? (
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-text-muted">Suggested skills</p>
-          <div className="flex flex-wrap gap-2">
-            {suggested.map((skill) => (
-              <button
-                key={skill.id}
-                type="button"
-                onClick={() => addSkill(skill)}
-                className="rounded-full border border-border-default bg-surface-raised px-3 py-1 text-sm text-ink-600 hover:border-border-strong"
-              >
-                {skill.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       {value.length > 0 ? (
         <div>
-          <p className="mb-1.5 text-xs font-medium text-text-muted">Your skills</p>
-          <ul className="flex flex-wrap gap-2" aria-label="Your skills">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">Your expertise</p>
+          <ul className="flex flex-wrap gap-2" aria-label="Selected expertise">
             {value.map((skill) => (
               <li key={skill.id}>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 py-1 pl-3 pr-1.5 text-sm text-brand-700">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 py-1.5 pl-3.5 pr-2 text-sm font-medium text-brand-700">
                   {skill.name}
                   <button
                     type="button"
@@ -243,6 +218,10 @@ export function SkillsExpertise({ value, onChange }: SkillsExpertiseProps) {
           </ul>
         </div>
       ) : null}
+
+      <p className="text-xs leading-relaxed text-text-muted">
+        You can add skills from the catalog, or create your own.
+      </p>
     </div>
   );
 }

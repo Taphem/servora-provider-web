@@ -5,13 +5,34 @@ import { StepServiceArea } from "@/components/provider/onboarding/StepServiceAre
 import { emptyServiceAreaAvailability } from "@/components/provider/onboarding/types";
 
 describe("StepServiceArea", () => {
-  it("adds a service area as a removable chip", async () => {
+  it("renders the interactive map container and place search input", () => {
+    render(
+      <StepServiceArea
+        value={emptyServiceAreaAvailability()}
+        onChange={vi.fn()}
+        onFinish={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Search location or service area")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use my current location" })).toBeInTheDocument();
+    expect(screen.getByText("Interactive Map")).toBeInTheDocument();
+  });
+
+  it("adds a service area via manual form", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(
-      <StepServiceArea value={emptyServiceAreaAvailability()} onChange={onChange} onFinish={vi.fn()} onBack={vi.fn()} />,
+      <StepServiceArea
+        value={emptyServiceAreaAvailability()}
+        onChange={onChange}
+        onFinish={vi.fn()}
+        onBack={vi.fn()}
+      />,
     );
 
+    await user.click(screen.getByText("+ Add an area manually without search"));
     await user.type(screen.getByLabelText("City"), "Austin");
     await user.click(screen.getByRole("button", { name: "Add area" }));
 
@@ -20,11 +41,23 @@ describe("StepServiceArea", () => {
     );
   });
 
-  it("removes an added area from the chip list", async () => {
+  it("removes an added area from the list", async () => {
     const user = userEvent.setup();
     const value = {
       ...emptyServiceAreaAvailability(),
-      areas: [{ tempId: "t1", countryCode: "US", region: "", city: "Austin", postalCode: "", latitude: "", longitude: "", radiusKm: "" }],
+      areas: [
+        {
+          tempId: "t1",
+          countryCode: "US",
+          region: "",
+          city: "Austin",
+          postalCode: "",
+          latitude: "30.2672",
+          longitude: "-97.7431",
+          radiusKm: "15",
+          formattedAddress: "Austin, TX, USA",
+        },
+      ],
     };
     const onChange = vi.fn();
     render(<StepServiceArea value={value} onChange={onChange} onFinish={vi.fn()} onBack={vi.fn()} />);
@@ -33,23 +66,84 @@ describe("StepServiceArea", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ areas: [] }));
   });
 
-  it("keeps the precise radius control disabled until latitude and longitude are set", async () => {
+  it("supports geolocation via Use my current location", async () => {
     const user = userEvent.setup();
-    render(<StepServiceArea value={emptyServiceAreaAvailability()} onChange={vi.fn()} onFinish={vi.fn()} onBack={vi.fn()} />);
+    const onChange = vi.fn();
 
-    await user.click(screen.getByRole("button", { name: "Set a precise coverage radius (optional)" }));
-    expect(screen.getByRole("slider")).toBeDisabled();
+    const mockGetCurrentPosition = vi.fn().mockImplementation((success) => {
+      success({
+        coords: {
+          latitude: 12.9716,
+          longitude: 77.5946,
+        },
+      });
+    });
 
-    await user.type(screen.getByLabelText("Latitude"), "30.27");
-    await user.type(screen.getByLabelText("Longitude"), "-97.74");
-    expect(screen.getByRole("slider")).toBeEnabled();
+    Object.defineProperty(global.navigator, "geolocation", {
+      value: { getCurrentPosition: mockGetCurrentPosition },
+      writable: true,
+      configurable: true,
+    });
+
+    render(
+      <StepServiceArea
+        value={emptyServiceAreaAvailability()}
+        onChange={onChange}
+        onFinish={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Use my current location" }));
+
+    expect(mockGetCurrentPosition).toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        areas: [
+          expect.objectContaining({
+            latitude: "12.9716",
+            longitude: "77.5946",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("handles geolocation denial gracefully without crashing", async () => {
+    const user = userEvent.setup();
+    const mockGetCurrentPosition = vi.fn().mockImplementation((_, error) => {
+      error({ code: 1, PERMISSION_DENIED: 1 });
+    });
+
+    Object.defineProperty(global.navigator, "geolocation", {
+      value: { getCurrentPosition: mockGetCurrentPosition },
+      writable: true,
+      configurable: true,
+    });
+
+    render(
+      <StepServiceArea
+        value={emptyServiceAreaAvailability()}
+        onChange={vi.fn()}
+        onFinish={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Use my current location" }));
+    expect(await screen.findByText(/Location permission was denied/)).toBeInTheDocument();
   });
 
   it("toggles a day on to reveal its time range, off to hide it", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(
-      <StepServiceArea value={emptyServiceAreaAvailability()} onChange={onChange} onFinish={vi.fn()} onBack={vi.fn()} />,
+      <StepServiceArea
+        value={emptyServiceAreaAvailability()}
+        onChange={onChange}
+        onFinish={vi.fn()}
+        onBack={vi.fn()}
+      />,
     );
 
     expect(screen.getAllByText("Unavailable").length).toBe(7);
@@ -63,7 +157,14 @@ describe("StepServiceArea", () => {
   it("blocks finishing without at least one area", async () => {
     const user = userEvent.setup();
     const onFinish = vi.fn();
-    render(<StepServiceArea value={emptyServiceAreaAvailability()} onChange={vi.fn()} onFinish={onFinish} onBack={vi.fn()} />);
+    render(
+      <StepServiceArea
+        value={emptyServiceAreaAvailability()}
+        onChange={vi.fn()}
+        onFinish={onFinish}
+        onBack={vi.fn()}
+      />,
+    );
 
     await user.click(screen.getByRole("button", { name: "Finish setup" }));
     expect(await screen.findByText("Add at least one area you serve.")).toBeInTheDocument();
@@ -75,7 +176,18 @@ describe("StepServiceArea", () => {
     const onFinish = vi.fn();
     const value = {
       ...emptyServiceAreaAvailability(),
-      areas: [{ tempId: "t1", countryCode: "US", region: "", city: "Austin", postalCode: "", latitude: "", longitude: "", radiusKm: "" }],
+      areas: [
+        {
+          tempId: "t1",
+          countryCode: "US",
+          region: "",
+          city: "Austin",
+          postalCode: "",
+          latitude: "30.2672",
+          longitude: "-97.7431",
+          radiusKm: "15",
+        },
+      ],
     };
     render(<StepServiceArea value={value} onChange={vi.fn()} onFinish={onFinish} onBack={vi.fn()} />);
 
@@ -89,7 +201,18 @@ describe("StepServiceArea", () => {
     const onFinish = vi.fn().mockResolvedValue(undefined);
     const value = {
       ...emptyServiceAreaAvailability(),
-      areas: [{ tempId: "t1", countryCode: "US", region: "", city: "Austin", postalCode: "", latitude: "", longitude: "", radiusKm: "" }],
+      areas: [
+        {
+          tempId: "t1",
+          countryCode: "US",
+          region: "",
+          city: "Austin",
+          postalCode: "",
+          latitude: "30.2672",
+          longitude: "-97.7431",
+          radiusKm: "15",
+        },
+      ],
       weekly: emptyServiceAreaAvailability().weekly.map((s, i) => (i === 1 ? { ...s, enabled: true } : s)),
     };
     render(<StepServiceArea value={value} onChange={vi.fn()} onFinish={onFinish} onBack={vi.fn()} />);

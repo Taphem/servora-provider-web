@@ -32,21 +32,23 @@ beforeEach(() => {
 });
 
 describe("SkillsExpertise", () => {
-  it("shows an empty state with suggested skills when nothing is selected yet", async () => {
+  it("shows a compact prompt (not a chip dump) when nothing is selected yet", async () => {
     setup();
     render(<Controlled />);
-    expect(await screen.findByText("Leak detection")).toBeInTheDocument();
-    expect(screen.getByText("Suggested skills")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Your skills")).not.toBeInTheDocument();
+    await screen.findByRole("combobox", { name: "Search or add a skill" });
+    expect(screen.getByText("You can add skills from the catalog, or create your own.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Selected expertise")).not.toBeInTheDocument();
   });
 
-  it("adds a catalog skill by clicking a suggestion chip", async () => {
+  it("selecting an existing catalog skill from the popover adds it to Selected expertise", async () => {
     setup();
     const user = userEvent.setup();
     render(<Controlled />);
 
-    await user.click(await screen.findByText("Leak detection"));
-    expect(await screen.findByLabelText("Your skills")).toHaveTextContent("Leak detection");
+    await user.click(await screen.findByRole("combobox", { name: "Search or add a skill" }));
+    await user.click(await screen.findByRole("option", { name: "Leak detection" }));
+
+    expect(await screen.findByLabelText("Selected expertise")).toHaveTextContent("Leak detection");
   });
 
   it("lets a provider add a skill that does not exist in the catalog", async () => {
@@ -61,7 +63,7 @@ describe("SkillsExpertise", () => {
     await user.click(await screen.findByRole("button", { name: /Add "Split AC servicing" as a new skill/ }));
 
     await waitFor(() => expect(mockedCreateMySkill).toHaveBeenCalledWith("Split AC servicing"));
-    expect(await screen.findByLabelText("Your skills")).toHaveTextContent("Split AC servicing");
+    expect(await screen.findByLabelText("Selected expertise")).toHaveTextContent("Split AC servicing");
   });
 
   it("does not require a newly added skill to exist in the Services catalog", async () => {
@@ -75,7 +77,7 @@ describe("SkillsExpertise", () => {
     await user.type(search, "Compressor diagnostics");
     await user.click(await screen.findByRole("button", { name: /Add "Compressor diagnostics" as a new skill/ }));
 
-    expect(await screen.findByLabelText("Your skills")).toHaveTextContent("Compressor diagnostics");
+    expect(await screen.findByLabelText("Selected expertise")).toHaveTextContent("Compressor diagnostics");
   });
 
   it("supports adding multiple skills", async () => {
@@ -83,12 +85,14 @@ describe("SkillsExpertise", () => {
     const user = userEvent.setup();
     render(<Controlled />);
 
-    await user.click(await screen.findByText("Leak detection"));
-    await user.click(await screen.findByText("Pipe fitting"));
+    await user.click(await screen.findByRole("combobox", { name: "Search or add a skill" }));
+    await user.click(await screen.findByRole("option", { name: "Leak detection" }));
+    await user.click(screen.getByRole("combobox", { name: "Search or add a skill" }));
+    await user.click(await screen.findByRole("option", { name: "Pipe fitting" }));
 
-    const yourSkills = await screen.findByLabelText("Your skills");
-    expect(yourSkills).toHaveTextContent("Leak detection");
-    expect(yourSkills).toHaveTextContent("Pipe fitting");
+    const selected = await screen.findByLabelText("Selected expertise");
+    expect(selected).toHaveTextContent("Leak detection");
+    expect(selected).toHaveTextContent("Pipe fitting");
   });
 
   it("removes a skill", async () => {
@@ -97,7 +101,7 @@ describe("SkillsExpertise", () => {
     render(<Controlled initial={[leakDetection]} />);
 
     await user.click(screen.getByRole("button", { name: "Remove Leak detection" }));
-    expect(screen.queryByLabelText("Your skills")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Selected expertise")).not.toBeInTheDocument();
   });
 
   it("shows a clear error if creating a skill fails, without adding a fake chip", async () => {
@@ -112,6 +116,6 @@ describe("SkillsExpertise", () => {
     await user.click(await screen.findByRole("button", { name: /Add "X" as a new skill/ }));
 
     expect(await screen.findByText("Enter at least 2 characters.")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Your skills")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Selected expertise")).not.toBeInTheDocument();
   });
 });

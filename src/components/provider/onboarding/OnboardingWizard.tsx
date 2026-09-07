@@ -18,6 +18,7 @@ import {
   replaceMyWeeklyAvailability,
   updateMyProvider,
   updateMyService,
+  uploadMyProfilePhoto,
 } from "@/lib/api/provider";
 import { createProviderSchema, updateProviderSchema } from "@/lib/validation/provider";
 import { omitEmptyOptionals } from "@/lib/omitEmpty";
@@ -45,7 +46,7 @@ type Phase = "loading" | "wizard" | "already-complete" | "load-error" | "finishe
 
 export function OnboardingWizard() {
   const router = useRouter();
-  const { provider, status: providerStatus, error: providerError } = useProvider(true);
+  const { provider, status: providerStatus, error: providerError, updateLocalProvider, refetch: refetchProvider } = useProvider(true);
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -165,11 +166,13 @@ export function OnboardingWizard() {
 
     if (hasExistingProvider.current) {
       const parsed = updateProviderSchema.parse(raw);
-      await updateMyProvider(omitEmptyOptionals(parsed));
+      const updated = await updateMyProvider(omitEmptyOptionals(parsed));
+      updateLocalProvider?.(updated);
     } else {
       const parsed = createProviderSchema.parse(raw);
-      await createMyProvider(omitEmptyOptionals(parsed) as CreateProviderInput);
+      const created = await createMyProvider(omitEmptyOptionals(parsed) as CreateProviderInput);
       hasExistingProvider.current = true;
+      updateLocalProvider?.(created);
     }
     setStep(2);
   }
@@ -206,12 +209,24 @@ export function OnboardingWizard() {
   }
 
   async function persistServiceAreaAvailability() {
+    // 1. Final submission: upload pending profile photo to Cloudinary if selected
+    let latestPhotoUrl = aboutYou.photoUrl;
+    if (aboutYou.pendingPhotoFile) {
+      const uploadedUrl = await uploadMyProfilePhoto(aboutYou.pendingPhotoFile);
+      latestPhotoUrl = uploadedUrl;
+      await updateMyProvider({ profilePhotoUrl: uploadedUrl });
+      setAboutYou((prev) => ({ ...prev, photoUrl: uploadedUrl, pendingPhotoFile: null }));
+    } else if (aboutYou.photoUrl === "" && provider?.profilePhotoUrl) {
+      await updateMyProvider({ profilePhotoUrl: null });
+    }
+
+    // 2. Persist service areas
     const currentAreaIds = new Set(serviceArea.areas.map((a) => a.id).filter((id): id is string => Boolean(id)));
     for (const id of initialAreaIds.current) {
       if (!currentAreaIds.has(id)) await deleteMyServiceArea(id);
     }
     for (const area of serviceArea.areas) {
-      if (area.id) continue; // already persisted; servora-provider has no update endpoint for an existing area
+      if (area.id) continue; // already persisted
       await createMyServiceArea({
         countryCode: area.countryCode,
         region: area.region.trim() || undefined,
@@ -223,10 +238,18 @@ export function OnboardingWizard() {
       });
     }
 
+    // 3. Persist weekly availability schedule
     const slots = serviceArea.weekly
       .map((slot, dayOfWeek) => (slot.enabled ? { dayOfWeek, startTime: slot.startTime, endTime: slot.endTime } : null))
       .filter((slot): slot is { dayOfWeek: number; startTime: string; endTime: string } => slot !== null);
     await replaceMyWeeklyAvailability(slots);
+
+    // 4. Update the navbar avatar via context without requiring a full reload
+    if (provider) {
+      updateLocalProvider?.({ profilePhotoUrl: latestPhotoUrl || null });
+    } else {
+      void refetchProvider();
+    }
 
     setPhase("finished");
   }

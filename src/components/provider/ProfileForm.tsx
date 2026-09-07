@@ -3,12 +3,13 @@
 import { useState, type FormEvent } from "react";
 import type { ZodIssue } from "zod";
 import { ApiError } from "@/lib/api/client";
-import { createMyProvider, updateMyProvider } from "@/lib/api/provider";
+import { createMyProvider, updateMyProvider, uploadMyProfilePhoto } from "@/lib/api/provider";
 import { createProviderSchema, updateProviderSchema } from "@/lib/validation/provider";
 import { omitEmptyOptionals } from "@/lib/omitEmpty";
 import type { CreateProviderInput, Provider } from "@/types/domain";
 import { PhotoUploader } from "@/components/provider/PhotoUploader";
 import { LanguageMultiSelect } from "@/components/provider/LanguageMultiSelect";
+import { useProvider } from "@/hooks/useProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -51,10 +52,13 @@ function toFormState(provider?: Provider | null): FormState {
 }
 
 export function ProfileForm({ mode, initialProvider, onSuccess }: ProfileFormProps) {
+  const { setProvider: setContextProvider } = useProvider(false);
   const [values, setValues] = useState<FormState>(() => toFormState(initialProvider));
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -64,6 +68,7 @@ export function ProfileForm({ mode, initialProvider, onSuccess }: ProfileFormPro
     event.preventDefault();
     setFormError(null);
 
+    // 1. Validate form fields first before performing any upload
     const raw = {
       displayName: values.displayName,
       bio: values.bio.trim() || undefined,
@@ -74,22 +79,51 @@ export function ProfileForm({ mode, initialProvider, onSuccess }: ProfileFormPro
       timezone: values.timezone.trim() || undefined,
     };
 
+    const parsed = mode === "create" ? createProviderSchema.safeParse(raw) : updateProviderSchema.safeParse(raw);
+    if (!parsed.success) {
+      setFieldErrors(collectFieldErrors(parsed.error.issues));
+      return;
+    }
+
     setFieldErrors({});
     setSubmitting(true);
+
     try {
-      const parsed = mode === "create" ? createProviderSchema.safeParse(raw) : updateProviderSchema.safeParse(raw);
-      if (!parsed.success) {
-        setFieldErrors(collectFieldErrors(parsed.error.issues));
-        return;
+      let finalPhotoUrl = values.profilePhotoUrl;
+
+      // 2. Only upload pending image to Cloudinary when the provider clicks Save
+      if (pendingFile) {
+        setUploadingPhoto(true);
+        try {
+          finalPhotoUrl = await uploadMyProfilePhoto(pendingFile);
+        } catch (uploadErr) {
+          setFormError(
+            uploadErr instanceof ApiError
+              ? uploadErr.message
+              : "Couldn't upload your profile photo. Please try again.",
+          );
+          // Preserve pendingFile so the provider can retry without losing their selection
+          return;
+        } finally {
+          setUploadingPhoto(false);
+        }
       }
 
-      const input = omitEmptyOptionals(parsed.data);
-      let provider;
+      const input = omitEmptyOptionals({
+        ...parsed.data,
+        profilePhotoUrl: finalPhotoUrl.trim() === "" ? (mode === "update" ? null : undefined) : finalPhotoUrl,
+      });
+
+      let provider: Provider;
       if (mode === "create") {
         provider = await createMyProvider(input as CreateProviderInput);
       } else {
         provider = await updateMyProvider(input);
       }
+
+      setPendingFile(null);
+      setValues((prev) => ({ ...prev, profilePhotoUrl: provider.profilePhotoUrl ?? "" }));
+      setContextProvider?.(provider);
       onSuccess(provider);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -99,16 +133,22 @@ export function ProfileForm({ mode, initialProvider, onSuccess }: ProfileFormPro
       }
     } finally {
       setSubmitting(false);
+      setUploadingPhoto(false);
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
       <PhotoUploader
-        value={values.profilePhotoUrl || null}
-        onUploaded={(url) => update("profilePhotoUrl", url)}
-        onRemove={() => update("profilePhotoUrl", "")}
+        savedUrl={values.profilePhotoUrl || null}
+        pendingFile={pendingFile}
+        onFileSelect={(file) => setPendingFile(file)}
+        onRemove={() => {
+          setPendingFile(null);
+          update("profilePhotoUrl", "");
+        }}
         disabled={submitting}
+        isUploading={uploadingPhoto}
       />
       <Input
         label="Display name"

@@ -10,6 +10,7 @@ export interface AboutYouDraft {
   languages: string[];
   timezone: string;
   photoUrl: string;
+  pendingPhotoFile?: File | null;
 }
 
 export interface ServiceDraft {
@@ -40,6 +41,10 @@ export interface AreaDraft {
   latitude: string;
   longitude: string;
   radiusKm: string;
+  /** User-facing display address resolved from Google Places or Geocoding. */
+  formattedAddress?: string;
+  /** Google Place ID if selected from Place autocomplete. */
+  placeId?: string;
 }
 
 export interface DaySlotDraft {

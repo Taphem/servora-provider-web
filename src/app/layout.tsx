@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter, Fraunces } from "next/font/google";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
+import { ProviderProfileProvider } from "@/lib/providers/ProviderContext";
 import { ProviderNav } from "@/components/layout/ProviderNav";
 import { env } from "@/lib/env";
 import "./globals.css";
@@ -31,8 +32,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${inter.variable} ${fraunces.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-surface-sunken">
         <AuthProvider>
-          <ProviderNav />
-          <main className="flex-1">{children}</main>
+          <ProviderProfileProvider>
+            <ProviderNav />
+            <main className="flex-1">{children}</main>
+          </ProviderProfileProvider>
         </AuthProvider>
       </body>
     </html>

@@ -86,7 +86,7 @@ describe("ProfileForm (onboarding, create mode)", () => {
     expect(mockedCreate.mock.calls[0][0]).not.toHaveProperty("businessName");
   });
 
-  it("uploads the selected supported image immediately and persists its returned URL on submit", async () => {
+  it("defers photo upload until form submission and persists its returned URL", async () => {
     const user = userEvent.setup();
     mockedUpload.mockResolvedValue("https://res.cloudinary.com/servora/image/upload/servora/providers/u/p.webp");
     mockedCreate.mockResolvedValue({ id: "p1" } as never);
@@ -94,10 +94,14 @@ describe("ProfileForm (onboarding, create mode)", () => {
     await user.type(screen.getByLabelText("Display name"), "Asha Cleaner");
     const file = new File(["image"], "portrait.webp", { type: "image/webp" });
     await user.upload(screen.getByLabelText("Profile photo"), file);
-    await waitFor(() => expect(mockedUpload).toHaveBeenCalledWith(file));
-    await screen.findByText("portrait.webp uploaded.");
 
+    // Crucial: no upload should happen upon selection
+    expect(mockedUpload).not.toHaveBeenCalled();
+    expect(screen.getByText(/Selected: portrait\.webp/)).toBeInTheDocument();
+
+    // Now click submit -> upload is triggered
     await user.click(screen.getByRole("button", { name: "Create provider profile" }));
+    await waitFor(() => expect(mockedUpload).toHaveBeenCalledWith(file));
     await waitFor(() => expect(mockedCreate).toHaveBeenCalledTimes(1));
     expect(mockedCreate.mock.calls[0][0]).toMatchObject({ profilePhotoUrl: expect.stringContaining("cloudinary.com") });
   });
